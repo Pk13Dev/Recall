@@ -299,6 +299,18 @@
     </section>
   </div>
 
+  <div id="quiz-delete-modal" class="modal-backdrop" hidden>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="quiz-delete-title">
+      <h2 id="quiz-delete-title" class="modal-title">Remove Quiz</h2>
+      <p id="quiz-delete-message" class="modal-copy"></p>
+      <p class="modal-note">This removes the saved quiz from RECALL and from the synced libarray folder on the next save.</p>
+      <div class="modal-actions">
+        <button id="quiz-delete-confirm-btn" class="btn btn-primary btn-compact" type="button">Remove Quiz</button>
+        <button id="quiz-delete-cancel-btn" class="btn btn-secondary btn-compact" type="button">Cancel</button>
+      </div>
+    </section>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>

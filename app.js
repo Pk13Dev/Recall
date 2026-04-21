@@ -67,7 +67,11 @@
     folderDeleteMessage: document.getElementById("folder-delete-message"),
     folderDeleteContents: document.getElementById("folder-delete-contents"),
     folderDeleteConfirmBtn: document.getElementById("folder-delete-confirm-btn"),
-    folderDeleteCancelBtn: document.getElementById("folder-delete-cancel-btn")
+    folderDeleteCancelBtn: document.getElementById("folder-delete-cancel-btn"),
+    quizDeleteModal: document.getElementById("quiz-delete-modal"),
+    quizDeleteMessage: document.getElementById("quiz-delete-message"),
+    quizDeleteConfirmBtn: document.getElementById("quiz-delete-confirm-btn"),
+    quizDeleteCancelBtn: document.getElementById("quiz-delete-cancel-btn")
   };
 
   const demoQuizData = {
@@ -146,6 +150,7 @@
       entityId: null
     },
     pendingFolderDeleteId: null,
+    pendingQuizDeleteId: null,
     confettiTimer: null,
     resultEffectTimer: null
   };
@@ -482,6 +487,13 @@
     elements.folderDeleteModal.hidden = true;
   }
 
+  // Resets the quiz delete dialog after confirm, cancel, or escape.
+  function closeQuizDeleteModal() {
+    libraryRuntime.pendingQuizDeleteId = null;
+    elements.quizDeleteMessage.textContent = "";
+    elements.quizDeleteModal.hidden = true;
+  }
+
   function getFolderStats(folderId) {
     const folder = getFolder(folderId);
     if (!folder) {
@@ -514,6 +526,21 @@
     elements.folderDeleteMessage.textContent =
       `${folder.name} contains ${stats.folders} folder(s) and ${stats.quizzes} quiz file(s).`;
     elements.folderDeleteModal.hidden = false;
+  }
+
+  // Opens a lightweight confirmation step before removing a saved quiz.
+  function openQuizDeleteModal(quizId) {
+    const quiz = getQuiz(quizId);
+    if (!quiz) {
+      showError("That quiz no longer exists.");
+      return;
+    }
+
+    closeLibraryEditor();
+    libraryRuntime.pendingQuizDeleteId = quizId;
+    elements.quizDeleteMessage.textContent =
+      `Remove ${quiz.name}? This saved quiz will be removed from your library.`;
+    elements.quizDeleteModal.hidden = false;
   }
 
   function moveQuizToFolder(quizId, targetFolderId) {
@@ -603,6 +630,23 @@
 
     closeFolderDeleteModal();
     libraryRuntime.currentFolderId = getFolder(libraryRuntime.currentFolderId) ? libraryRuntime.currentFolderId : parentFolderId;
+    await persistAndRefreshLibrary();
+  }
+
+  // Removes one quiz record and persists the updated library structure.
+  async function confirmQuizDelete() {
+    clearError();
+
+    const quizId = libraryRuntime.pendingQuizDeleteId;
+    const quiz = getQuiz(quizId);
+    if (!quiz) {
+      closeQuizDeleteModal();
+      showError("That quiz no longer exists.");
+      return;
+    }
+
+    deleteQuizRecord(quizId);
+    closeQuizDeleteModal();
     await persistAndRefreshLibrary();
   }
 
@@ -1991,7 +2035,13 @@
             className: "btn btn-secondary saved-item-btn saved-item-main-btn"
           },
           { label: "Rename", action: "edit-quiz", quizId: quiz.id },
-          { label: "Move", action: "edit-move-quiz", quizId: quiz.id }
+          { label: "Move", action: "edit-move-quiz", quizId: quiz.id },
+          {
+            label: "Delete",
+            action: "delete-quiz",
+            quizId: quiz.id,
+            className: "btn btn-secondary saved-item-btn saved-item-danger-btn"
+          }
         ])
       ]);
       elements.savedQuizList.appendChild(item);
@@ -2547,6 +2597,11 @@
       return;
     }
 
+    if (action === "delete-quiz" && quizId) {
+      openQuizDeleteModal(quizId);
+      return;
+    }
+
     if (action === "goto-folder" && folderId) {
       closeLibraryEditor();
       openFolder(folderId);
@@ -3059,6 +3114,17 @@
         closeFolderDeleteModal();
       }
     });
+    elements.quizDeleteConfirmBtn.addEventListener("click", function () {
+      confirmQuizDelete().catch(() => {
+        showError("Could not remove the quiz right now.");
+      });
+    });
+    elements.quizDeleteCancelBtn.addEventListener("click", closeQuizDeleteModal);
+    elements.quizDeleteModal.addEventListener("click", function (event) {
+      if (event.target === elements.quizDeleteModal) {
+        closeQuizDeleteModal();
+      }
+    });
     elements.libraryNameInput.addEventListener("keydown", function (event) {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -3110,6 +3176,7 @@
       if (event.key === "Escape") {
         closeAllMiniPopups();
         closeFolderDeleteModal();
+        closeQuizDeleteModal();
       }
     });
   }
