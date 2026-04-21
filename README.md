@@ -281,4 +281,6 @@ Their saved library and analytics will stay local to their own browser on their 
 
 ## License
 
-Add a license here if you want to make sharing rules explicit.
+This project is licensed under the MIT License.
+
+See the [LICENSE](./LICENSE) file for the full license text.
