@@ -83,7 +83,7 @@
 
     <section id="upload-screen" class="screen is-active" aria-labelledby="upload-title">
       <div class="upload-screen-layout">
-        <section class="card upload-card" aria-labelledby="upload-title">
+        <section id="upload-card" class="card upload-card" aria-labelledby="upload-title">
           <div class="upload-card-grid">
             <div class="upload-card-copy">
               <p class="upload-kicker">Quick Import</p>
@@ -91,10 +91,10 @@
               <p class="screen-copy">Add one quiz file or bring in an entire folder. Everything stays local and study-ready.</p>
             </div>
 
-            <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload JSON file">
+            <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload quiz JSON files or folders">
               <div class="drop-copy">
                 <p class="drop-title">Upload JSON</p>
-                <p class="drop-subtitle">Drop quiz files here or use the actions below.</p>
+                <p class="drop-subtitle">Drop quiz files or folders anywhere in this panel, or use the actions below.</p>
               </div>
               <div class="button-row upload-button-row">
                 <button id="choose-file-btn" class="btn btn-primary" type="button">Upload JSON</button>
@@ -121,7 +121,7 @@
             <div class="library-actions">
               <button id="new-folder-btn" class="btn btn-secondary btn-compact" type="button">New Folder</button>
               <button id="overview-folder-btn" class="btn btn-secondary btn-compact" type="button" disabled>Overview</button>
-              <button id="project-library-btn" class="btn btn-secondary btn-compact" type="button">Connect libarray</button>
+              <button id="project-library-btn" class="btn btn-secondary btn-compact" type="button">Link libarray Folder</button>
               <button id="up-folder-btn" class="btn btn-secondary btn-compact" type="button">Up</button>
             </div>
           </div>

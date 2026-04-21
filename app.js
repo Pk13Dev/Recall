@@ -7,6 +7,7 @@
   };
 
   const elements = {
+    uploadCard: document.getElementById("upload-card"),
     dropZone: document.getElementById("drop-zone"),
     chooseFileBtn: document.getElementById("choose-file-btn"),
     chooseFolderBtn: document.getElementById("choose-folder-btn"),
@@ -192,6 +193,23 @@
     elements.errorMessage.textContent = message;
   }
 
+  function hasDraggedFiles(event) {
+    const types = Array.from((event.dataTransfer && event.dataTransfer.types) || []);
+    return types.includes("Files");
+  }
+
+  function setUploadDragActive(isActive) {
+    elements.dropZone.classList.toggle("is-dragover", isActive);
+    if (elements.uploadCard) {
+      elements.uploadCard.classList.toggle("is-dragover", isActive);
+    }
+  }
+
+  function resetUploadInputs() {
+    elements.fileInput.value = "";
+    elements.folderInput.value = "";
+  }
+
   function resetVictoryFeedback() {
     if (libraryRuntime.resultEffectTimer) {
       window.clearTimeout(libraryRuntime.resultEffectTimer);
@@ -344,20 +362,20 @@
 
     const supported = supportsProjectLibraryFolder();
     if (libraryRuntime.projectDirectoryHandle) {
-      elements.projectLibraryBtn.textContent = "libarray Connected";
-      elements.projectLibraryBtn.title = "The project libarray folder is connected for this session.";
+      elements.projectLibraryBtn.textContent = "libarray Sync On";
+      elements.projectLibraryBtn.title = "RECALL is syncing uploads into the real libarray folder for this session.";
       return;
     }
 
-    elements.projectLibraryBtn.textContent = "Connect libarray";
+    elements.projectLibraryBtn.textContent = "Link libarray Folder";
     elements.projectLibraryBtn.title = supported
-      ? "Connect the physical libarray folder in the project directory."
+      ? "Optional: choose the existing libarray folder from this project so RECALL can save real files there too."
       : getProjectLibrarySupportMessage();
   }
 
   function updateLibraryNote() {
     if (libraryRuntime.projectDirectoryHandle) {
-      setLibraryNote("Connected to physical project folder: libarray. Uploaded quizzes now sync automatically to libarray/quizzes and libarray/library-model.json.");
+      setLibraryNote("Everything still saves in this browser, and uploads now also sync into the real libarray folder in this project: libarray/quizzes plus libarray/library-model.json.");
       return;
     }
 
@@ -367,16 +385,16 @@
     }
 
     if (libraryRuntime.mode === "opfs") {
-      setLibraryNote("Library is stored locally in browser-managed storage. Connect the project libarray folder once to sync future uploads there automatically when permission is available.");
+      setLibraryNote("Everything already works with browser-local storage. Optional: click \"Link libarray Folder\" once and choose the existing libarray folder from this project if you also want physical quiz files saved beside the app.");
       return;
     }
 
     if (libraryRuntime.mode === "localStorage") {
-      setLibraryNote("Library is stored locally in this browser. Connect the project libarray folder once to sync future uploads there automatically when permission is available.");
+      setLibraryNote("Everything already works with browser-local storage. Optional: click \"Link libarray Folder\" once and choose the existing libarray folder from this project if you also want physical quiz files saved beside the app.");
       return;
     }
 
-    setLibraryNote("Storage is temporary in this tab. Connect the project libarray folder or keep this tab open.");
+    setLibraryNote("Storage is temporary in this tab. Link the project libarray folder if you want physical files saved beside the app, or keep this tab open.");
   }
 
   function isValidTheme(themeName) {
@@ -1272,7 +1290,7 @@
       }
 
       if (directoryHandle.name.toLowerCase() !== LIBARRAY_DIRECTORY) {
-        showError(`Select the "${LIBARRAY_DIRECTORY}" folder in the project directory.`);
+        showError(`Choose the existing "${LIBARRAY_DIRECTORY}" folder that sits beside index.html in this project.`);
         return;
       }
 
@@ -2795,6 +2813,37 @@
       .map((file) => createImportEntry(file, file.webkitRelativePath || ""));
   }
 
+  // Reads dropped files and folders through Chromium's File System Access handles when available.
+  async function readDroppedHandle(handle, parentPath) {
+    if (!handle) {
+      return [];
+    }
+
+    if (handle.kind === "file") {
+      const file = await handle.getFile().catch(() => null);
+      if (!file) {
+        return [];
+      }
+
+      const nextPath = parentPath ? `${parentPath}/${file.name}` : file.name;
+      return [createImportEntry(file, nextPath)];
+    }
+
+    if (handle.kind === "directory") {
+      const nextPath = parentPath ? `${parentPath}/${handle.name}` : handle.name;
+      const nestedEntries = [];
+
+      for await (const childHandle of handle.values()) {
+        const childEntries = await readDroppedHandle(childHandle, nextPath);
+        nestedEntries.push(...childEntries);
+      }
+
+      return nestedEntries;
+    }
+
+    return [];
+  }
+
   function readDroppedFile(entry, parentPath) {
     return new Promise((resolve) => {
       entry.file(
@@ -2857,7 +2906,9 @@
   }
 
   async function getImportEntriesFromDrop(event) {
-    const items = Array.from((event.dataTransfer && event.dataTransfer.items) || []);
+    const dataTransfer = event.dataTransfer;
+    const items = Array.from((dataTransfer && dataTransfer.items) || []);
+    const droppedFiles = Array.from((dataTransfer && dataTransfer.files) || []);
     const entries = [];
 
     if (items.length) {
@@ -2866,11 +2917,24 @@
           continue;
         }
 
+        if (typeof item.getAsFileSystemHandle === "function") {
+          const handle = await item.getAsFileSystemHandle().catch(() => null);
+          if (handle) {
+            const droppedHandleEntries = await readDroppedHandle(handle, "");
+            if (droppedHandleEntries.length) {
+              entries.push(...droppedHandleEntries);
+              continue;
+            }
+          }
+        }
+
         const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
         if (entry) {
           const droppedEntries = await readDroppedEntry(entry, "");
-          entries.push(...droppedEntries);
-          continue;
+          if (droppedEntries.length) {
+            entries.push(...droppedEntries);
+            continue;
+          }
         }
 
         const file = item.getAsFile();
@@ -2881,7 +2945,7 @@
     }
 
     if (!entries.length) {
-      return getImportEntriesFromFileList((event.dataTransfer && event.dataTransfer.files) || []);
+      return getImportEntriesFromFileList(droppedFiles);
     }
 
     return entries;
@@ -2890,81 +2954,84 @@
   // Imports one or more uploaded quiz files into the current library folder.
   async function processQuizFiles(fileList) {
     clearError();
+    try {
+      const importEntries = Array.isArray(fileList) && fileList.length && fileList[0] && fileList[0].file
+        ? fileList
+        : getImportEntriesFromFileList(fileList);
 
-    const importEntries = Array.isArray(fileList) && fileList.length && fileList[0] && fileList[0].file
-      ? fileList
-      : getImportEntriesFromFileList(fileList);
-
-    if (!importEntries.length) {
-      showError("No files selected. Please choose at least one JSON file.");
-      return;
-    }
-
-    const jsonEntries = importEntries.filter(
-      (entry) => entry.file && (entry.file.type === "application/json" || entry.file.name.toLowerCase().endsWith(".json"))
-    );
-
-    if (!jsonEntries.length) {
-      showError("No JSON quizzes were found in that selection.");
-      return;
-    }
-
-    const currentFolder = getCurrentFolder();
-    let importedCount = 0;
-    let ignoredCount = importEntries.length - jsonEntries.length;
-    let firstImportedQuestions = null;
-    let firstImportedQuiz = null;
-    let firstImportedFolderId = currentFolder.id;
-
-    for (const entry of jsonEntries) {
-      try {
-        const file = entry.file;
-        const fileText = await file.text();
-        const parsedData = safeJsonParse(fileText, null);
-        if (!parsedData) {
-          throw new Error("The file could not be read as valid JSON.");
-        }
-
-        const questions = validateQuizData(parsedData);
-        const relativeSegments = normalizeImportPathSegments(entry.relativePath || "");
-        const folderSegments = relativeSegments.slice(0, -1);
-        const destinationFolder = ensureFolderPath(currentFolder.id, folderSegments);
-
-        const savedQuiz = await saveUploadedQuizToFolder(destinationFolder.id, questions, file.name);
-
-        if (!firstImportedQuestions) {
-          firstImportedQuestions = questions;
-          firstImportedQuiz = savedQuiz;
-          firstImportedFolderId = destinationFolder.id;
-        }
-        importedCount += 1;
-      } catch (error) {
-        ignoredCount += 1;
+      if (!importEntries.length) {
+        showError("No files selected. Please choose at least one JSON file.");
+        return;
       }
+
+      const jsonEntries = importEntries.filter(
+        (entry) => entry.file && (entry.file.type === "application/json" || entry.file.name.toLowerCase().endsWith(".json"))
+      );
+
+      if (!jsonEntries.length) {
+        showError("No JSON quizzes were found in that selection.");
+        return;
+      }
+
+      const currentFolder = getCurrentFolder();
+      let importedCount = 0;
+      let ignoredCount = importEntries.length - jsonEntries.length;
+      let firstImportedQuestions = null;
+      let firstImportedQuiz = null;
+      let firstImportedFolderId = currentFolder.id;
+
+      for (const entry of jsonEntries) {
+        try {
+          const file = entry.file;
+          const fileText = await file.text();
+          const parsedData = safeJsonParse(fileText, null);
+          if (!parsedData) {
+            throw new Error("The file could not be read as valid JSON.");
+          }
+
+          const questions = validateQuizData(parsedData);
+          const relativeSegments = normalizeImportPathSegments(entry.relativePath || "");
+          const folderSegments = relativeSegments.slice(0, -1);
+          const destinationFolder = ensureFolderPath(currentFolder.id, folderSegments);
+
+          const savedQuiz = await saveUploadedQuizToFolder(destinationFolder.id, questions, file.name);
+
+          if (!firstImportedQuestions) {
+            firstImportedQuestions = questions;
+            firstImportedQuiz = savedQuiz;
+            firstImportedFolderId = destinationFolder.id;
+          }
+          importedCount += 1;
+        } catch (error) {
+          ignoredCount += 1;
+        }
+      }
+
+      if (!importedCount) {
+        showError("No valid quiz JSON files could be imported.");
+        return;
+      }
+
+      await persistAndRefreshLibrary();
+      closeLibraryEditor();
+      libraryRuntime.currentFolderId = firstImportedFolderId;
+      refreshLibraryUI();
+
+      if (importedCount === 1 && firstImportedQuestions) {
+        startQuiz(firstImportedQuestions, firstImportedQuiz ? getLaunchContextForQuiz(firstImportedQuiz) : null);
+        return;
+      }
+
+      showScreen("upload");
+      if (ignoredCount > 0) {
+        showError(`Imported ${importedCount} quiz file(s). Ignored ${ignoredCount} unsupported or invalid file(s).`);
+        return;
+      }
+
+      clearError();
+    } finally {
+      resetUploadInputs();
     }
-
-    if (!importedCount) {
-      showError("No valid quiz JSON files could be imported.");
-      return;
-    }
-
-    await persistAndRefreshLibrary();
-    closeLibraryEditor();
-    libraryRuntime.currentFolderId = firstImportedFolderId;
-    refreshLibraryUI();
-
-    if (importedCount === 1 && firstImportedQuestions) {
-      startQuiz(firstImportedQuestions, firstImportedQuiz ? getLaunchContextForQuiz(firstImportedQuiz) : null);
-      return;
-    }
-
-    showScreen("upload");
-    if (ignoredCount > 0) {
-      showError(`Imported ${importedCount} quiz file(s). Ignored ${ignoredCount} unsupported or invalid file(s).`);
-      return;
-    }
-
-    clearError();
   }
 
   async function processQuizFile(file) {
@@ -3028,11 +3095,13 @@
     quizState.hasAnswered = false;
     quizState.activeSession = null;
     quizState.questionStartedAt = 0;
-    elements.fileInput.value = "";
-    elements.folderInput.value = "";
+    resetUploadInputs();
   }
 
+  // Wires file pickers and makes the whole upload card act like a safe drop target.
   function initializeUploadEvents() {
+    let uploadDragDepth = 0;
+
     elements.chooseFileBtn.addEventListener("click", () => elements.fileInput.click());
     elements.chooseFolderBtn.addEventListener("click", () => elements.folderInput.click());
 
@@ -3046,16 +3115,89 @@
       processQuizFiles(files);
     });
 
-    elements.dropZone.addEventListener("dragover", function (event) {
+    function handleUploadDragEnter(event) {
+      if (!hasDraggedFiles(event)) {
+        return;
+      }
+
       event.preventDefault();
-      elements.dropZone.classList.add("is-dragover");
+      event.stopPropagation();
+      uploadDragDepth += 1;
+      setUploadDragActive(true);
+    }
+
+    function handleUploadDragOver(event) {
+      if (!hasDraggedFiles(event)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "copy";
+      }
+      setUploadDragActive(true);
+    }
+
+    function handleUploadDragLeave(event) {
+      if (!hasDraggedFiles(event)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      uploadDragDepth = Math.max(uploadDragDepth - 1, 0);
+      if (!uploadDragDepth) {
+        setUploadDragActive(false);
+      }
+    }
+
+    async function handleUploadDrop(event) {
+      if (!hasDraggedFiles(event)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      uploadDragDepth = 0;
+      setUploadDragActive(false);
+      await onDrop(event);
+    }
+
+    [elements.uploadCard].filter(Boolean).forEach((target) => {
+      target.addEventListener("dragenter", handleUploadDragEnter);
+      target.addEventListener("dragover", handleUploadDragOver);
+      target.addEventListener("dragleave", handleUploadDragLeave);
+      target.addEventListener("drop", function (event) {
+        handleUploadDrop(event).catch(() => {
+          showError("That drop could not be imported right now.");
+        });
+      });
     });
 
-    elements.dropZone.addEventListener("dragleave", function () {
-      elements.dropZone.classList.remove("is-dragover");
+    document.addEventListener("dragover", function (event) {
+      if (!hasDraggedFiles(event)) {
+        return;
+      }
+
+      event.preventDefault();
     });
 
-    elements.dropZone.addEventListener("drop", onDrop);
+    document.addEventListener("drop", function (event) {
+      if (!hasDraggedFiles(event)) {
+        return;
+      }
+
+      const dropTarget = event.target instanceof Node ? event.target : null;
+      if (elements.uploadCard && dropTarget && elements.uploadCard.contains(dropTarget)) {
+        return;
+      }
+
+      event.preventDefault();
+      uploadDragDepth = 0;
+      setUploadDragActive(false);
+      showError("Drop quiz files into the upload panel, or use Upload JSON / Open Folder.");
+    });
 
     elements.dropZone.addEventListener("keydown", function (event) {
       if (event.key === "Enter" || event.key === " ") {
