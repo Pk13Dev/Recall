@@ -10,6 +10,8 @@ The app runs entirely in the browser. You can upload a single JSON quiz, import 
 - Parses the quiz locally in the browser
 - Starts an interactive multiple-choice quiz immediately
 - Shows one question at a time with exactly 4 answers
+- Randomly selects up to 20 questions from larger quiz files for each attempt
+- Selects those 4 answers from a larger answer pool when a question includes extra distractors
 - Shuffles answer positions without losing the correct answer
 - Tracks scores, question results, timestamps, and answer times
 - Stores imported quizzes locally in the built-in `libarray` library
@@ -127,7 +129,8 @@ RECALL expects quiz files in this structure:
         "Option 1",
         "Option 2",
         "Option 3",
-        "Option 4"
+        "Option 4",
+        "Option 5"
       ],
       "correctIndex": 0
     }
@@ -142,9 +145,12 @@ RECALL validates quiz files before starting:
 - The file must contain a valid JSON object
 - The object must contain a non-empty `questions` array
 - Each question must include question text
-- Each question must include exactly 4 options
-- `correctIndex` must be `0`, `1`, `2`, or `3`
+- Each question must include between 4 and 17 options
+- `correctIndex` must point to one of the entries in `options`
 - If `correctAnswer` is included, it must match `options[correctIndex]`
+- If a quiz contains more than 20 questions, RECALL randomly picks 20 questions for that run
+- RECALL always displays exactly 4 answers per attempt, and one of them is always the correct answer
+- Questions with 5 to 17 options let RECALL randomly pick 3 incorrect answers each time the quiz starts
 - Extra explanation text outside valid JSON is not supported
 
 ## Example quiz file
@@ -159,7 +165,8 @@ RECALL validates quiz files before starting:
         "JavaScript Object Notation",
         "Java Source Open Network",
         "Joined Syntax Object Number",
-        "Java Serialized Output Namespace"
+        "Java Serialized Output Namespace",
+        "Justified Syntax Operation Notation"
       ],
       "correctIndex": 0
     },
@@ -170,7 +177,8 @@ RECALL validates quiz files before starting:
         "1",
         "-1",
         "0",
-        "2"
+        "2",
+        "10"
       ],
       "correctIndex": 2
     }

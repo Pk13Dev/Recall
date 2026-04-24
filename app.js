@@ -84,20 +84,21 @@
           "JavaScript Object Notation",
           "Java Source Open Network",
           "Joined Syntax Object Number",
-          "Java Serialized Output Namespace"
+          "Java Serialized Output Namespace",
+          "Justified Syntax Operation Notation"
         ],
         correctIndex: 0
       },
       {
         id: 2,
         question: "Which index points to the first element in an array?",
-        options: ["1", "-1", "0", "2"],
+        options: ["1", "-1", "0", "2", "10"],
         correctIndex: 2
       },
       {
         id: 3,
         question: "Which value type is valid in JSON?",
-        options: ["undefined", "function", "symbol", "string"],
+        options: ["undefined", "function", "symbol", "string", "bigint"],
         correctIndex: 3
       }
     ]
@@ -105,6 +106,10 @@
 
   const DEFAULT_VOLUME = 0.75;
   const DEFAULT_THEME = "light";
+  const DISPLAY_OPTION_COUNT = 4;
+  const MAX_QUESTIONS_PER_ATTEMPT = 20;
+  const MIN_OPTIONS_PER_QUESTION = 4;
+  const MAX_OPTIONS_PER_QUESTION = 17;
   const THEMES = ["light", "dark", "neon", "vibrant"];
   const THEME_LABELS = {
     light: "Light",
@@ -425,29 +430,25 @@
     }));
   }
 
-  function shuffleQuestionOptions(question) {
-    const indexedOptions = question.options.map((option, index) => ({
-      option,
-      originalIndex: index
-    }));
-
-    for (let index = indexedOptions.length - 1; index > 0; index -= 1) {
-      const swapIndex = Math.floor(Math.random() * (index + 1));
-      const temp = indexedOptions[index];
-      indexedOptions[index] = indexedOptions[swapIndex];
-      indexedOptions[swapIndex] = temp;
-    }
+  // Builds a 4-answer question for the active attempt while always keeping the correct answer visible.
+  function selectQuestionOptionsForAttempt(question) {
+    const correctOption = question.options[question.correctIndex];
+    const incorrectOptions = question.options.filter((option, index) => index !== question.correctIndex);
+    const selectedIncorrectOptions = shuffleList(incorrectOptions).slice(0, DISPLAY_OPTION_COUNT - 1);
+    const attemptOptions = shuffleList([correctOption, ...selectedIncorrectOptions]);
 
     return {
       id: question.id,
       question: question.question,
-      options: indexedOptions.map((entry) => entry.option),
-      correctIndex: indexedOptions.findIndex((entry) => entry.originalIndex === question.correctIndex)
+      options: attemptOptions,
+      correctIndex: attemptOptions.indexOf(correctOption)
     };
   }
 
   function prepareQuizQuestionsForAttempt(questions) {
-    return cloneQuestions(questions).map(shuffleQuestionOptions);
+    return shuffleList(cloneQuestions(questions))
+      .slice(0, MAX_QUESTIONS_PER_ATTEMPT)
+      .map(selectQuestionOptionsForAttempt);
   }
 
   function createElement(tagName, className, textContent) {
@@ -797,12 +798,18 @@
       throw new Error(`Question ${index + 1} is missing question text.`);
     }
 
-    if (!Array.isArray(rawQuestion.options) || rawQuestion.options.length !== 4) {
-      throw new Error(`Question ${index + 1} must include exactly 4 options.`);
+    if (
+      !Array.isArray(rawQuestion.options) ||
+      rawQuestion.options.length < MIN_OPTIONS_PER_QUESTION ||
+      rawQuestion.options.length > MAX_OPTIONS_PER_QUESTION
+    ) {
+      throw new Error(
+        `Question ${index + 1} must include between ${MIN_OPTIONS_PER_QUESTION} and ${MAX_OPTIONS_PER_QUESTION} options.`
+      );
     }
 
     const options = [];
-    for (let optionIndex = 0; optionIndex < 4; optionIndex += 1) {
+    for (let optionIndex = 0; optionIndex < rawQuestion.options.length; optionIndex += 1) {
       const option = rawQuestion.options[optionIndex];
       if (typeof option !== "string" || !option.trim()) {
         throw new Error(`Question ${index + 1}, option ${optionIndex + 1} must be non-empty text.`);
@@ -814,9 +821,9 @@
       typeof rawQuestion.correctIndex !== "number" ||
       !Number.isInteger(rawQuestion.correctIndex) ||
       rawQuestion.correctIndex < 0 ||
-      rawQuestion.correctIndex > 3
+      rawQuestion.correctIndex >= options.length
     ) {
-      throw new Error(`Question ${index + 1} must have a correctIndex of 0, 1, 2, or 3.`);
+      throw new Error(`Question ${index + 1} must have a correctIndex between 0 and ${options.length - 1}.`);
     }
 
     if (!options[rawQuestion.correctIndex]) {
@@ -2300,7 +2307,7 @@
 
     if (!hasAnalyticsData) {
       elements.analyticsSummaryCopy.textContent =
-        "Track scores, timings, question accuracy, and recent answers across your saved quizzes.";
+        "Track scores, timings, question accuracy, and recent answers across sampled quiz runs of up to 20 questions with 4 displayed answers each.";
       return;
     }
 
@@ -2310,7 +2317,9 @@
     const averageScore = totalSessions ? Math.round((Number(totals.totalScorePercent) || 0) / totalSessions) : 0;
     const correctRate = totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
-    elements.analyticsSummaryCopy.textContent = `Tracking ${totalQuestions} answers across ${totalSessions} completed quiz runs.`;
+    elements.analyticsSummaryCopy.textContent =
+      `Tracking ${totalQuestions} answered questions across ${totalSessions} completed quiz runs. ` +
+      "Each run records up to 20 randomly selected questions with 4 displayed answers per question.";
     elements.analyticsTotalSessions.textContent = String(totalSessions);
     elements.analyticsAverageScore.textContent = formatPercent(averageScore);
     elements.analyticsCorrectRate.textContent = formatPercent(correctRate);
@@ -2688,7 +2697,8 @@
 
   function startQuiz(questions, launchConfig) {
     resetVictoryFeedback();
-    quizState.questions = prepareQuizQuestionsForAttempt(questions);
+    const attemptQuestions = prepareQuizQuestionsForAttempt(questions);
+    quizState.questions = attemptQuestions;
     quizState.currentQuestionIndex = 0;
     quizState.selectedIndex = null;
     quizState.hasAnswered = false;
@@ -2696,7 +2706,7 @@
     quizState.activeSession = {
       id: nextAnalyticsId("session", "sess"),
       startedAt: Date.now(),
-      questionCount: questions.length,
+      questionCount: attemptQuestions.length,
       answers: [],
       ...buildQuizLaunchContext(launchConfig)
     };
@@ -2975,10 +2985,12 @@
 
       const currentFolder = getCurrentFolder();
       let importedCount = 0;
-      let ignoredCount = importEntries.length - jsonEntries.length;
+      const unsupportedCount = importEntries.length - jsonEntries.length;
+      let invalidCount = 0;
       let firstImportedQuestions = null;
       let firstImportedQuiz = null;
       let firstImportedFolderId = currentFolder.id;
+      const importErrors = [];
 
       for (const entry of jsonEntries) {
         try {
@@ -3003,12 +3015,23 @@
           }
           importedCount += 1;
         } catch (error) {
-          ignoredCount += 1;
+          console.error("Quiz import failed:", entry && entry.file && entry.file.name ? entry.file.name : "Unknown file", error);
+          invalidCount += 1;
+          importErrors.push({
+            fileName: entry && entry.file && entry.file.name ? entry.file.name : "Unknown file",
+            message: error && error.message ? error.message : "The file could not be imported."
+          });
         }
       }
 
       if (!importedCount) {
-        showError("No valid quiz JSON files could be imported.");
+        const firstError = importErrors[0];
+        if (firstError) {
+          showError(`Could not import "${firstError.fileName}". ${firstError.message}`);
+          return;
+        }
+
+        showError("No valid quiz JSON files could be imported. Reload the page to ensure the latest app.js changes are active, then try again.");
         return;
       }
 
@@ -3023,12 +3046,17 @@
       }
 
       showScreen("upload");
+      const ignoredCount = unsupportedCount + invalidCount;
       if (ignoredCount > 0) {
-        showError(`Imported ${importedCount} quiz file(s). Ignored ${ignoredCount} unsupported or invalid file(s).`);
+        const firstError = importErrors[0];
+        const detail = firstError ? ` First import issue: "${firstError.fileName}" - ${firstError.message}` : "";
+        showError(`Imported ${importedCount} quiz file(s). Ignored ${ignoredCount} unsupported or invalid file(s).${detail}`);
         return;
       }
 
       clearError();
+    } catch (error) {
+      showError(error && error.message ? error.message : "The selected quiz files could not be imported.");
     } finally {
       resetUploadInputs();
     }
