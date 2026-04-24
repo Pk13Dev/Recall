@@ -49,6 +49,16 @@
         </div>
         <div class="sound-control">
           <button
+            id="guide-open-btn"
+            class="sound-toggle-btn"
+            type="button"
+            aria-label="Open guide"
+          >
+            Guide
+          </button>
+        </div>
+        <div class="sound-control">
+          <button
             id="sound-toggle-btn"
             class="sound-toggle-btn"
             type="button"
@@ -121,7 +131,6 @@
             <div class="library-actions">
               <button id="new-folder-btn" class="btn btn-secondary btn-compact" type="button">New Folder</button>
               <button id="overview-folder-btn" class="btn btn-secondary btn-compact" type="button" disabled>Overview</button>
-              <button id="project-library-btn" class="btn btn-secondary btn-compact" type="button">Link libarray Folder</button>
               <button id="up-folder-btn" class="btn btn-secondary btn-compact" type="button">Up</button>
             </div>
           </div>
@@ -193,7 +202,7 @@
             <p class="analytics-kicker">Study Analytics</p>
             <h2 id="analytics-title">Your learning history</h2>
             <p id="analytics-summary-copy" class="screen-copy analytics-summary-copy">
-              Track scores, timings, question accuracy, and recent answers across sampled quiz runs of up to 20 questions with 4 displayed answers each.
+              Recent scores and trends.
             </p>
           </div>
           <div class="analytics-hero-actions">
@@ -203,7 +212,7 @@
 
         <section id="analytics-empty" class="card analytics-empty-card" hidden>
           <h3>No analytics yet</h3>
-          <p class="saved-note">Complete a quiz and RECALL will start tracking the sampled question set, your scores, question results, and answer times here.</p>
+          <p class="saved-note">Finish a quiz to see your analytics.</p>
         </section>
 
         <section id="analytics-content" class="analytics-content" hidden aria-live="polite">
@@ -240,13 +249,23 @@
               <div class="analytics-panel-header">
                 <div>
                   <p class="analytics-panel-kicker">History</p>
-                  <h3>Recent Scores</h3>
+                  <h3>Recent Quizzes</h3>
                 </div>
               </div>
-              <div id="analytics-session-list" class="analytics-list"></div>
+              <div id="analytics-session-list" class="analytics-list analytics-list-compact"></div>
             </section>
 
             <section class="card analytics-panel">
+              <div class="analytics-panel-header">
+                <div>
+                  <p class="analytics-panel-kicker">Answers</p>
+                  <h3>Recent Answers</h3>
+                </div>
+              </div>
+              <div id="analytics-answer-list" class="analytics-list analytics-list-compact"></div>
+            </section>
+
+            <section class="card analytics-panel analytics-panel-wide">
               <div class="analytics-panel-header">
                 <div>
                   <p class="analytics-panel-kicker">Quizzes</p>
@@ -260,23 +279,305 @@
               <div class="analytics-panel-header">
                 <div>
                   <p class="analytics-panel-kicker">Questions</p>
-                  <h3>Most Missed Questions</h3>
+                  <h3>Most Incorrectly Guessed Questions</h3>
                 </div>
               </div>
-              <div id="analytics-question-list" class="analytics-list"></div>
+              <div id="analytics-question-list" class="analytics-list analytics-list-compact"></div>
             </section>
 
             <section class="card analytics-panel analytics-panel-wide">
               <div class="analytics-panel-header">
                 <div>
-                  <p class="analytics-panel-kicker">Answers</p>
-                  <h3>Recent Answers</h3>
+                  <p class="analytics-panel-kicker">Graphs</p>
+                  <h3>Progress Graphs</h3>
                 </div>
               </div>
-              <div id="analytics-answer-list" class="analytics-list"></div>
+              <div class="analytics-graph-grid">
+                <article class="analytics-graph-card">
+                  <div class="analytics-graph-header">
+                    <div>
+                      <p class="analytics-panel-kicker">Trend</p>
+                      <h4 class="analytics-graph-title">Recent Score Trend</h4>
+                    </div>
+                    <p class="analytics-graph-note">Last 8 attempts</p>
+                  </div>
+                  <div id="analytics-score-graph" class="analytics-graph-body"></div>
+                </article>
+
+                <article class="analytics-graph-card">
+                  <div class="analytics-graph-header">
+                    <div>
+                      <p class="analytics-panel-kicker">Coverage</p>
+                      <h4 class="analytics-graph-title">Quiz Status</h4>
+                    </div>
+                    <p class="analytics-graph-note">Library overview</p>
+                  </div>
+                  <div id="analytics-coverage-graph" class="analytics-graph-body"></div>
+                </article>
+              </div>
             </section>
           </div>
         </section>
+      </div>
+    </section>
+
+    <section id="guide-screen" class="screen" aria-labelledby="guide-title">
+      <div class="guide-screen-layout">
+        <section class="card guide-hero-card" aria-labelledby="guide-title">
+          <div class="guide-hero-copy">
+            <p class="guide-kicker">Guide</p>
+            <h2 id="guide-title">How RECALL works</h2>
+            <p class="screen-copy guide-summary-copy">
+              RECALL keeps the home screen focused on studying. This page explains the flow, the buttons, and where your quizzes are saved.
+            </p>
+            <div class="guide-overview-grid">
+              <article class="guide-overview-step">
+                <span class="guide-step-number">1</span>
+                <div>
+                  <h3>Import</h3>
+                  <p>Add one quiz, import a whole folder, or launch the demo.</p>
+                </div>
+              </article>
+              <article class="guide-overview-step">
+                <span class="guide-step-number">2</span>
+                <div>
+                  <h3>Organize</h3>
+                  <p>Use folders, overview quizzes, rename, move, and delete tools.</p>
+                </div>
+              </article>
+              <article class="guide-overview-step">
+                <span class="guide-step-number">3</span>
+                <div>
+                  <h3>Study</h3>
+                  <p>Answer questions, finish a run, and review your analytics.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+          <div class="guide-hero-actions">
+            <button id="guide-back-btn" class="btn btn-secondary btn-compact" type="button">Back</button>
+          </div>
+        </section>
+
+        <div class="guide-grid">
+          <section class="card guide-panel" aria-labelledby="guide-controls-title">
+            <div class="guide-panel-header">
+              <div>
+                <p class="guide-panel-kicker">Top Bar</p>
+                <h3 id="guide-controls-title">Global controls</h3>
+              </div>
+            </div>
+            <ul class="guide-action-list">
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Theme</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Change the visual style</p>
+                  <p class="guide-action-description">Opens the theme picker and remembers your choice for later sessions.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Sound</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Adjust quiz sounds</p>
+                  <p class="guide-action-description">Changes the notification volume for correct, wrong, win, and loss effects.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Analytics</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Open your learning history</p>
+                  <p class="guide-action-description">Shows recent scores, quiz performance, most-missed questions, recent answers, and total study time.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Guide</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Return to this walkthrough</p>
+                  <p class="guide-action-description">Keeps the main screen uncluttered by moving the longer explanations here.</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="card guide-panel" aria-labelledby="guide-import-title">
+            <div class="guide-panel-header">
+              <div>
+                <p class="guide-panel-kicker">Import</p>
+                <h3 id="guide-import-title">Getting quizzes in</h3>
+              </div>
+            </div>
+            <ul class="guide-action-list">
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Upload JSON</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Import one quiz file</p>
+                  <p class="guide-action-description">Opens a file picker for a single JSON quiz and starts that quiz after import.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Open Folder</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Import many quizzes at once</p>
+                  <p class="guide-action-description">Brings in every supported JSON file in a selected folder and recreates nested folders in Saved Quizzes.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Drop Zone</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Drag files straight into RECALL</p>
+                  <p class="guide-action-description">You can drop quiz files or folders onto the upload panel instead of using the file picker buttons.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Use Demo Quiz</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Preview the experience</p>
+                  <p class="guide-action-description">Launches a built-in sample quiz without saving a new file to your library first.</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="card guide-panel" aria-labelledby="guide-library-title">
+            <div class="guide-panel-header">
+              <div>
+                <p class="guide-panel-kicker">Library</p>
+                <h3 id="guide-library-title">Saved Quizzes buttons</h3>
+              </div>
+            </div>
+            <ul class="guide-action-list">
+              <li class="guide-action-item">
+                <span class="guide-action-chip">New Folder</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Create a folder in the current location</p>
+                  <p class="guide-action-description">Adds a new folder inside the folder you are currently viewing.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Overview</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Build a mixed review quiz</p>
+                  <p class="guide-action-description">Creates an overview quiz by pulling one random question from each regular quiz in the current folder.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Up</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Go to the parent folder</p>
+                  <p class="guide-action-description">Moves one level higher in the Saved Quizzes folder tree.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Breadcrumbs</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Jump to any folder in the path</p>
+                  <p class="guide-action-description">Use the path buttons above the list to move directly to a previous folder level.</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="card guide-panel" aria-labelledby="guide-items-title">
+            <div class="guide-panel-header">
+              <div>
+                <p class="guide-panel-kicker">Items</p>
+                <h3 id="guide-items-title">Folder and quiz actions</h3>
+              </div>
+            </div>
+            <ul class="guide-action-list">
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Open</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Enter a folder</p>
+                  <p class="guide-action-description">Shows the quizzes and subfolders stored inside that folder.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Load</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Start a saved quiz</p>
+                  <p class="guide-action-description">Loads the selected quiz into the quiz screen and begins a fresh attempt.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Rename</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Edit the visible name</p>
+                  <p class="guide-action-description">Updates the label of a folder or quiz while keeping it in the library.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Move</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Send a quiz to another folder</p>
+                  <p class="guide-action-description">Opens the inline picker so you can choose a new folder destination for that quiz.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Delete</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Remove a folder or quiz</p>
+                  <p class="guide-action-description">Deletes the selected item. Folder removal can also move its contents up instead of deleting everything inside.</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="card guide-panel" aria-labelledby="guide-quiz-title">
+            <div class="guide-panel-header">
+              <div>
+                <p class="guide-panel-kicker">Quiz Flow</p>
+                <h3 id="guide-quiz-title">What happens during a quiz</h3>
+              </div>
+            </div>
+            <ul class="guide-action-list">
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Answer</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Pick one option per question</p>
+                  <p class="guide-action-description">RECALL locks the answers, marks the result, and updates your score immediately after you choose.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Next Question</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Continue only after answering</p>
+                  <p class="guide-action-description">The button stays disabled until you select an answer for the current question.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Quiz Length</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Sampled study runs</p>
+                  <p class="guide-action-description">Each run can sample up to 20 questions, and each question shows 4 answer choices.</p>
+                </div>
+              </li>
+              <li class="guide-action-item">
+                <span class="guide-action-chip">Results</span>
+                <div class="guide-action-copy">
+                  <p class="guide-action-title">Review and continue</p>
+                  <p class="guide-action-description">Use Restart to return to the library or View Analytics to inspect your study history.</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="card guide-panel guide-panel-wide guide-storage-card" aria-labelledby="guide-storage-title">
+            <div class="guide-panel-header">
+              <div>
+                <p class="guide-panel-kicker">Storage</p>
+                <h3 id="guide-storage-title">Where your quizzes are saved</h3>
+              </div>
+              <span class="guide-status-chip">Browser local</span>
+            </div>
+            <p class="guide-storage-detail">RECALL keeps quizzes, folders, theme, sound, and analytics in this browser.</p>
+            <ul class="guide-storage-list">
+              <li><strong>Browser storage</strong> is the default and keeps quizzes, folders, theme, sound, and analytics in this browser.</li>
+              <li><strong>Saved quizzes</strong> stay available in this browser on this device when browser storage is supported.</li>
+              <li><strong>Temporary mode</strong> can still work in restricted environments, but those saves only last for the current tab session.</li>
+            </ul>
+          </section>
+        </div>
       </div>
     </section>
   </main>
@@ -303,7 +604,7 @@
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="quiz-delete-title">
       <h2 id="quiz-delete-title" class="modal-title">Remove Quiz</h2>
       <p id="quiz-delete-message" class="modal-copy"></p>
-      <p class="modal-note">This removes the saved quiz from RECALL and from the synced libarray folder on the next save.</p>
+      <p class="modal-note">This removes the saved quiz from RECALL.</p>
       <div class="modal-actions">
         <button id="quiz-delete-confirm-btn" class="btn btn-primary btn-compact" type="button">Remove Quiz</button>
         <button id="quiz-delete-cancel-btn" class="btn btn-secondary btn-compact" type="button">Cancel</button>

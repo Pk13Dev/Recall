@@ -3,7 +3,8 @@
     upload: document.getElementById("upload-screen"),
     quiz: document.getElementById("quiz-screen"),
     results: document.getElementById("results-screen"),
-    analytics: document.getElementById("analytics-screen")
+    analytics: document.getElementById("analytics-screen"),
+    guide: document.getElementById("guide-screen")
   };
 
   const elements = {
@@ -15,8 +16,8 @@
     folderInput: document.getElementById("folder-input"),
     demoBtn: document.getElementById("demo-btn"),
     overviewFolderBtn: document.getElementById("overview-folder-btn"),
-    projectLibraryBtn: document.getElementById("project-library-btn"),
     analyticsOpenBtn: document.getElementById("analytics-open-btn"),
+    guideOpenBtn: document.getElementById("guide-open-btn"),
     newFolderBtn: document.getElementById("new-folder-btn"),
     upFolderBtn: document.getElementById("up-folder-btn"),
     themeToggleBtn: document.getElementById("theme-toggle-btn"),
@@ -51,6 +52,7 @@
     restartBtn: document.getElementById("restart-btn"),
     resultsAnalyticsBtn: document.getElementById("results-analytics-btn"),
     analyticsBackBtn: document.getElementById("analytics-back-btn"),
+    guideBackBtn: document.getElementById("guide-back-btn"),
     analyticsSummaryCopy: document.getElementById("analytics-summary-copy"),
     analyticsEmpty: document.getElementById("analytics-empty"),
     analyticsContent: document.getElementById("analytics-content"),
@@ -63,6 +65,8 @@
     analyticsQuizList: document.getElementById("analytics-quiz-list"),
     analyticsQuestionList: document.getElementById("analytics-question-list"),
     analyticsAnswerList: document.getElementById("analytics-answer-list"),
+    analyticsScoreGraph: document.getElementById("analytics-score-graph"),
+    analyticsCoverageGraph: document.getElementById("analytics-coverage-graph"),
     confettiLayer: document.getElementById("confetti-layer"),
     folderDeleteModal: document.getElementById("folder-delete-modal"),
     folderDeleteMessage: document.getElementById("folder-delete-message"),
@@ -117,16 +121,14 @@
     neon: "Neon",
     vibrant: "Vibrant"
   };
-  const LIBARRAY_DIRECTORY = "libarray";
+  const ROOT_LIBRARY_LABEL = "Library";
+  const LIBRARY_DIRECTORY = "library";
+  const PREVIOUS_LIBRARY_DIRECTORY = "libarray";
   const LEGACY_LIBRARY_DIRECTORY = "libaray";
   const LIBRARY_MODEL_FILE = "library-model.json";
   const LIBRARY_MODEL_KEY = "recall::libarray::library-model";
   const LEGACY_LIBRARY_MODEL_KEY = "recall::libaray::library-model";
   const LEGACY_LOCAL_PREFIX = "libaray::";
-  const PROJECT_LIBRARY_QUIZZES_DIRECTORY = "quizzes";
-  const PROJECT_HANDLE_DB_NAME = "recall-project-handles";
-  const PROJECT_HANDLE_STORE = "handles";
-  const PROJECT_HANDLE_KEY = "libarray-project-directory";
   const MAX_RECENT_ANALYTIC_SESSIONS = 180;
   const MAX_RECENT_ANALYTIC_ANSWERS = 2000;
   const fireworkColors = ["#3ea66a", "#6bc58d", "#4e7b72", "#8cd9af", "#9fd5c5"];
@@ -145,9 +147,9 @@
     mode: "memory",
     directoryHandle: null,
     legacyDirectoryHandle: null,
-    projectDirectoryHandle: null,
     model: null,
     currentFolderId: "root",
+    lastNonGuideScreen: "upload",
     saveTimer: null,
     activeTheme: DEFAULT_THEME,
     loadedFromLegacyStorage: false,
@@ -187,6 +189,9 @@
 
   function showScreen(name) {
     Object.values(screens).forEach((screen) => screen.classList.remove("is-active"));
+    if (name !== "guide") {
+      libraryRuntime.lastNonGuideScreen = name;
+    }
     screens[name].classList.add("is-active");
   }
 
@@ -233,173 +238,13 @@
     elements.libraryNote.textContent = message;
   }
 
-  function supportsProjectLibraryFolder() {
-    return typeof window.showDirectoryPicker === "function";
-  }
-
-  function getProjectLibrarySupportMessage() {
-    if (supportsProjectLibraryFolder()) {
-      return "";
-    }
-
-    if (typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent || "")) {
-      return "Direct libarray syncing needs a Chromium-based browser such as Chrome or Edge. Firefox does not expose the folder-write API used here.";
-    }
-
-    if (typeof window.isSecureContext === "boolean" && !window.isSecureContext) {
-      return "Direct libarray syncing needs a secure browser context. Open RECALL through localhost or another secure context that allows folder access.";
-    }
-
-    return "This browser does not expose the folder-write API needed for direct libarray syncing. Chrome or Edge is the safest option here.";
-  }
-
-  function supportsProjectHandlePersistence() {
-    return typeof indexedDB !== "undefined";
-  }
-
-  // Opens the small IndexedDB store that remembers an approved physical libarray folder.
-  function openProjectHandleDatabase() {
-    if (!supportsProjectHandlePersistence()) {
-      return Promise.resolve(null);
-    }
-
-    return new Promise((resolve) => {
-      try {
-        const request = indexedDB.open(PROJECT_HANDLE_DB_NAME, 1);
-        request.onupgradeneeded = function () {
-          const database = request.result;
-          if (!database.objectStoreNames.contains(PROJECT_HANDLE_STORE)) {
-            database.createObjectStore(PROJECT_HANDLE_STORE);
-          }
-        };
-        request.onsuccess = function () {
-          resolve(request.result);
-        };
-        request.onerror = function () {
-          resolve(null);
-        };
-      } catch (error) {
-        resolve(null);
-      }
-    });
-  }
-
-  // Runs a single request against the stored project-folder handle database.
-  function runProjectHandleRequest(mode, createRequest) {
-    return openProjectHandleDatabase().then((database) => {
-      if (!database) {
-        return null;
-      }
-
-      return new Promise((resolve) => {
-        try {
-          const transaction = database.transaction(PROJECT_HANDLE_STORE, mode);
-          const request = createRequest(transaction.objectStore(PROJECT_HANDLE_STORE));
-          request.onsuccess = function () {
-            resolve(request.result ?? null);
-          };
-          request.onerror = function () {
-            resolve(null);
-          };
-          transaction.oncomplete = function () {
-            database.close();
-          };
-          transaction.onerror = function () {
-            database.close();
-          };
-        } catch (error) {
-          database.close();
-          resolve(null);
-        }
-      });
-    });
-  }
-
-  function readStoredProjectDirectoryHandle() {
-    return runProjectHandleRequest("readonly", (store) => store.get(PROJECT_HANDLE_KEY));
-  }
-
-  function persistProjectDirectoryHandle(handle) {
-    return runProjectHandleRequest("readwrite", (store) => store.put(handle, PROJECT_HANDLE_KEY));
-  }
-
-  async function clearStoredProjectDirectoryHandle() {
-    await runProjectHandleRequest("readwrite", (store) => store.delete(PROJECT_HANDLE_KEY));
-  }
-
-  async function restoreProjectLibraryHandle() {
-    if (!supportsProjectLibraryFolder()) {
-      return false;
-    }
-
-    const storedHandle = await readStoredProjectDirectoryHandle();
-    if (!storedHandle || storedHandle.kind !== "directory") {
-      return false;
-    }
-
-    if (storedHandle.name.toLowerCase() !== LIBARRAY_DIRECTORY) {
-      await clearStoredProjectDirectoryHandle();
-      return false;
-    }
-
-    try {
-      const permissionState =
-        typeof storedHandle.queryPermission === "function"
-          ? await storedHandle.queryPermission({ mode: "readwrite" })
-          : "prompt";
-
-      if (permissionState !== "granted") {
-        return false;
-      }
-
-      libraryRuntime.projectDirectoryHandle = storedHandle;
-      return true;
-    } catch (error) {
-      await clearStoredProjectDirectoryHandle();
-      return false;
-    }
-  }
-
-  function refreshProjectLibraryButton() {
-    if (!elements.projectLibraryBtn) {
-      return;
-    }
-
-    const supported = supportsProjectLibraryFolder();
-    if (libraryRuntime.projectDirectoryHandle) {
-      elements.projectLibraryBtn.textContent = "libarray Sync On";
-      elements.projectLibraryBtn.title = "RECALL is syncing uploads into the real libarray folder for this session.";
-      return;
-    }
-
-    elements.projectLibraryBtn.textContent = "Link libarray Folder";
-    elements.projectLibraryBtn.title = supported
-      ? "Optional: choose the existing libarray folder from this project so RECALL can save real files there too."
-      : getProjectLibrarySupportMessage();
-  }
-
   function updateLibraryNote() {
-    if (libraryRuntime.projectDirectoryHandle) {
-      setLibraryNote("Everything still saves in this browser, and uploads now also sync into the real libarray folder in this project: libarray/quizzes plus libarray/library-model.json.");
+    if (libraryRuntime.mode === "opfs" || libraryRuntime.mode === "localStorage") {
+      setLibraryNote("Storage: Browser only");
       return;
     }
 
-    if (!supportsProjectLibraryFolder()) {
-      setLibraryNote(`${getProjectLibrarySupportMessage()} RECALL will keep saving to browser-local storage in this setup.`);
-      return;
-    }
-
-    if (libraryRuntime.mode === "opfs") {
-      setLibraryNote("Everything already works with browser-local storage. Optional: click \"Link libarray Folder\" once and choose the existing libarray folder from this project if you also want physical quiz files saved beside the app.");
-      return;
-    }
-
-    if (libraryRuntime.mode === "localStorage") {
-      setLibraryNote("Everything already works with browser-local storage. Optional: click \"Link libarray Folder\" once and choose the existing libarray folder from this project if you also want physical quiz files saved beside the app.");
-      return;
-    }
-
-    setLibraryNote("Storage is temporary in this tab. Link the project libarray folder if you want physical files saved beside the app, or keep this tab open.");
+    setLibraryNote("Storage: Temporary tab session");
   }
 
   function isValidTheme(themeName) {
@@ -534,7 +379,7 @@
   function openFolderDeleteModal(folderId) {
     const folder = getFolder(folderId);
     if (!folder || !folder.parentId) {
-      showError("The libarray root folder cannot be removed.");
+      showError("The library root folder cannot be removed.");
       return;
     }
 
@@ -935,7 +780,7 @@
       folders: {
         root: {
           id: "root",
-          name: LIBARRAY_DIRECTORY,
+          name: ROOT_LIBRARY_LABEL,
           parentId: null,
           childFolderIds: [],
           quizIds: [],
@@ -1066,7 +911,7 @@
       }
     });
 
-    model.folders.root.name = LIBARRAY_DIRECTORY;
+    model.folders.root.name = ROOT_LIBRARY_LABEL;
 
     return model;
   }
@@ -1156,76 +1001,7 @@
     await writable.close();
   }
 
-  async function clearDirectoryContents(directoryHandle) {
-    for await (const [entryName, entryHandle] of directoryHandle.entries()) {
-      await directoryHandle.removeEntry(entryName, { recursive: entryHandle.kind === "directory" });
-    }
-  }
-
-  async function writeProjectLibraryFolder(folderId, directoryHandle) {
-    const folder = getFolder(folderId);
-    if (!folder) {
-      return;
-    }
-
-    const usedNames = new Set();
-    const childFolders = folder.childFolderIds
-      .map((childFolderId) => getFolder(childFolderId))
-      .filter(Boolean)
-      .sort((left, right) => left.name.localeCompare(right.name));
-    const childQuizzes = folder.quizIds
-      .map((quizId) => getQuiz(quizId))
-      .filter(Boolean)
-      .sort((left, right) => left.name.localeCompare(right.name));
-
-    for (const childFolder of childFolders) {
-      const directoryName = ensureUniqueManagedEntryName(
-        sanitizeManagedEntryName(childFolder.name, `folder-${childFolder.id}`),
-        usedNames
-      );
-      const childDirectoryHandle = await directoryHandle.getDirectoryHandle(directoryName, { create: true });
-      await writeProjectLibraryFolder(childFolder.id, childDirectoryHandle);
-    }
-
-    for (const quiz of childQuizzes) {
-      const fileName = ensureUniqueManagedEntryName(
-        ensureManagedJsonFileName(quiz.name, `${quiz.id}.json`),
-        usedNames
-      );
-      const payload = JSON.stringify({ questions: cloneQuestions(quiz.questions) }, null, 2);
-      await writeTextFileToDirectory(directoryHandle, fileName, payload);
-    }
-  }
-
-  // Mirrors the virtual library model into the physical libarray folder when connected.
-  async function syncProjectLibraryFolder() {
-    if (!libraryRuntime.projectDirectoryHandle || !libraryRuntime.model) {
-      return;
-    }
-
-    await writeTextFileToDirectory(
-      libraryRuntime.projectDirectoryHandle,
-      LIBRARY_MODEL_FILE,
-      JSON.stringify(libraryRuntime.model, null, 2)
-    );
-
-    const quizzesDirectoryHandle = await libraryRuntime.projectDirectoryHandle.getDirectoryHandle(
-      PROJECT_LIBRARY_QUIZZES_DIRECTORY,
-      { create: true }
-    );
-    await clearDirectoryContents(quizzesDirectoryHandle);
-    await writeProjectLibraryFolder("root", quizzesDirectoryHandle);
-  }
-
   async function readLibraryModelFromStorage() {
-    if (libraryRuntime.projectDirectoryHandle) {
-      const projectPayload = await readTextFileFromDirectory(libraryRuntime.projectDirectoryHandle, LIBRARY_MODEL_FILE);
-      if (projectPayload) {
-        libraryRuntime.loadedFromLegacyStorage = false;
-        return safeJsonParse(projectPayload, null);
-      }
-    }
-
     if (libraryRuntime.mode === "opfs" && libraryRuntime.directoryHandle) {
       const currentPayload = await readTextFileFromDirectory(libraryRuntime.directoryHandle, LIBRARY_MODEL_FILE);
       if (currentPayload) {
@@ -1267,66 +1043,6 @@
     if (libraryRuntime.mode === "localStorage") {
       localStorage.setItem(LIBRARY_MODEL_KEY, serialized);
       localStorage.removeItem(LEGACY_LIBRARY_MODEL_KEY);
-    }
-
-    if (libraryRuntime.projectDirectoryHandle) {
-      try {
-        await syncProjectLibraryFolder();
-      } catch (error) {
-        libraryRuntime.projectDirectoryHandle = null;
-        clearStoredProjectDirectoryHandle().catch(() => {});
-        refreshProjectLibraryButton();
-        updateLibraryNote();
-      }
-    }
-  }
-
-  // Prompts the user for the real libarray folder and binds future syncs to it.
-  async function connectProjectLibraryFolder() {
-    clearError();
-
-    if (!supportsProjectLibraryFolder()) {
-      showError(getProjectLibrarySupportMessage());
-      return;
-    }
-
-    try {
-      const directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
-      if (!directoryHandle) {
-        return;
-      }
-
-      if (directoryHandle.name.toLowerCase() !== LIBARRAY_DIRECTORY) {
-        showError(`Choose the existing "${LIBARRAY_DIRECTORY}" folder that sits beside index.html in this project.`);
-        return;
-      }
-
-      libraryRuntime.projectDirectoryHandle = directoryHandle;
-      await persistProjectDirectoryHandle(directoryHandle);
-      refreshProjectLibraryButton();
-
-      const projectPayload = await readTextFileFromDirectory(directoryHandle, LIBRARY_MODEL_FILE);
-      if (projectPayload) {
-        const externalModel = safeJsonParse(projectPayload, null);
-        if (externalModel) {
-          libraryRuntime.model = normalizeLibraryModel(externalModel);
-          libraryRuntime.currentFolderId = libraryRuntime.model.rootFolderId;
-          setTheme(libraryRuntime.model.settings.theme, false);
-          setNotificationVolume(libraryRuntime.model.settings.volume, false);
-        }
-      }
-
-      await saveLibraryModel();
-      refreshLibraryUI();
-      updateLibraryNote();
-    } catch (error) {
-      if (error && error.name === "AbortError") {
-        return;
-      }
-      libraryRuntime.projectDirectoryHandle = null;
-      refreshProjectLibraryButton();
-      updateLibraryNote();
-      showError("Could not connect the project libarray folder.");
     }
   }
 
@@ -1869,7 +1585,7 @@
       const depth = getFolderDepth(folder.id);
       const prefix = depth ? `${"  ".repeat(depth)}- ` : "";
       option.value = folder.id;
-      option.textContent = `${prefix}${folder.id === "root" ? LIBARRAY_DIRECTORY : folder.name}`;
+      option.textContent = `${prefix}${folder.id === "root" ? ROOT_LIBRARY_LABEL : folder.name}`;
       if (folder.id === selectedFolderId) {
         option.selected = true;
       }
@@ -1890,7 +1606,7 @@
     if (mode === "create-folder") {
       const currentFolder = getCurrentFolder();
       elements.libraryEditorTitle.textContent = "Create Folder";
-      elements.libraryEditorSubtitle.textContent = `Inside ${currentFolder.id === "root" ? LIBARRAY_DIRECTORY : currentFolder.name}`;
+      elements.libraryEditorSubtitle.textContent = `Inside ${currentFolder.id === "root" ? ROOT_LIBRARY_LABEL : currentFolder.name}`;
       elements.libraryNameInput.hidden = false;
       elements.libraryNameInput.value = "";
       elements.libraryEditorSaveBtn.textContent = "Create";
@@ -1946,7 +1662,7 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "library-path-btn";
-      button.textContent = index === 0 ? LIBARRAY_DIRECTORY : folder.name;
+      button.textContent = index === 0 ? ROOT_LIBRARY_LABEL : folder.name;
       button.setAttribute("data-action", "goto-folder");
       button.setAttribute("data-folder-id", folder.id);
       elements.libraryBreadcrumb.appendChild(button);
@@ -2131,6 +1847,10 @@
     return createElement("p", "analytics-empty-message", message);
   }
 
+  function createSvgElement(tagName) {
+    return document.createElementNS("http://www.w3.org/2000/svg", tagName);
+  }
+
   // Renders a limited collection or a matching empty-state message into a container.
   function renderCollection(container, items, emptyMessage, limit, buildItem) {
     container.innerHTML = "";
@@ -2145,15 +1865,19 @@
   }
 
   function createAnalyticsRowCopy(titleText, metaText, detailText) {
-    return appendChildren(createElement("div", "analytics-row-copy"), [
-      createElement("p", "analytics-row-title", titleText),
-      createElement("p", "analytics-row-meta", metaText),
-      createElement("p", "analytics-row-detail", detailText)
-    ]);
+    const copy = createElement("div", "analytics-row-copy");
+    copy.appendChild(createElement("p", "analytics-row-title", titleText));
+    if (metaText) {
+      copy.appendChild(createElement("p", "analytics-row-meta", metaText));
+    }
+    if (detailText) {
+      copy.appendChild(createElement("p", "analytics-row-detail", detailText));
+    }
+    return copy;
   }
 
-  function createAnalyticsScoreChip(text) {
-    return createElement("div", "analytics-score-chip", text);
+  function createAnalyticsScoreChip(text, className) {
+    return createElement("div", className || "analytics-score-chip", text);
   }
 
   function createAnalyticsAnswerBadge(isCorrect) {
@@ -2162,6 +1886,49 @@
       `analytics-answer-badge ${isCorrect ? "is-correct" : "is-wrong"}`,
       isCorrect ? "Right" : "Wrong"
     );
+  }
+
+  function createAnalyticsMiniCopy(titleText, metaText) {
+    const copy = createElement("div", "analytics-mini-copy");
+    copy.appendChild(createElement("p", "analytics-mini-title", titleText));
+    if (metaText) {
+      copy.appendChild(createElement("p", "analytics-mini-meta", metaText));
+    }
+    return copy;
+  }
+
+  function createAnalyticsMiniRow(titleText, metaText, chipText, chipClassName) {
+    const row = createElement("article", "analytics-mini-row");
+    row.appendChild(createAnalyticsMiniCopy(titleText, metaText));
+    if (chipText) {
+      row.appendChild(createAnalyticsScoreChip(chipText, chipClassName));
+    }
+    return row;
+  }
+
+  function createAnalyticsPerformanceStat(labelText, valueText, noteText) {
+    return appendChildren(createElement("article", "analytics-performance-stat"), [
+      createElement("p", "analytics-performance-stat-label", labelText),
+      createElement("h4", "analytics-performance-stat-value", valueText),
+      createElement("p", "analytics-performance-stat-note", noteText)
+    ]);
+  }
+
+  function createAnalyticsPerformanceGroup(titleText, items, emptyMessage, buildItem) {
+    const section = createElement("section", "analytics-performance-group");
+    section.appendChild(createElement("h4", "analytics-performance-group-title", titleText));
+
+    const list = createElement("div", "analytics-performance-list");
+    if (!items.length) {
+      list.appendChild(createAnalyticsEmptyMessage(emptyMessage));
+    } else {
+      items.forEach((item) => {
+        list.appendChild(buildItem(item));
+      });
+    }
+
+    section.appendChild(list);
+    return section;
   }
 
   // Produces sorted analytics collections that are ready to render into the dashboard.
@@ -2198,12 +1965,80 @@
         return (Number(right.lastAnsweredAt) || 0) - (Number(left.lastAnsweredAt) || 0);
       });
 
+    const libraryQuizzes = Object.values((libraryRuntime.model && libraryRuntime.model.quizzes) || {})
+      .filter(Boolean)
+      .sort((left, right) => left.name.localeCompare(right.name));
+    const attemptedLibraryQuizStats = libraryQuizzes
+      .map((quiz) => {
+        const stat = analytics.quizStats[quiz.id];
+        if (!stat || (Number(stat.attempts) || 0) <= 0) {
+          return null;
+        }
+
+        return {
+          ...stat,
+          quizId: quiz.id,
+          quizName: quiz.name,
+          quizKind: quiz.kind || stat.quizKind || "quiz",
+          folderId: quiz.parentFolderId
+        };
+      })
+      .filter(Boolean);
+    const unattemptedQuizzes = libraryQuizzes.filter((quiz) => {
+      const stat = analytics.quizStats[quiz.id];
+      return !stat || (Number(stat.attempts) || 0) <= 0;
+    });
+    const topPerformers = attemptedLibraryQuizStats
+      .slice()
+      .sort((left, right) => {
+        const averageGap = (Number(right.averageScorePercent) || 0) - (Number(left.averageScorePercent) || 0);
+        if (averageGap !== 0) {
+          return averageGap;
+        }
+
+        const bestGap = (Number(right.bestScorePercent) || 0) - (Number(left.bestScorePercent) || 0);
+        if (bestGap !== 0) {
+          return bestGap;
+        }
+
+        return (Number(right.lastCompletedAt) || 0) - (Number(left.lastCompletedAt) || 0);
+      })
+      .slice(0, 3);
+    const leastPerformers = attemptedLibraryQuizStats
+      .slice()
+      .sort((left, right) => {
+        const averageGap = (Number(left.averageScorePercent) || 0) - (Number(right.averageScorePercent) || 0);
+        if (averageGap !== 0) {
+          return averageGap;
+        }
+
+        const bestGap = (Number(left.bestScorePercent) || 0) - (Number(right.bestScorePercent) || 0);
+        if (bestGap !== 0) {
+          return bestGap;
+        }
+
+        return (Number(right.attempts) || 0) - (Number(left.attempts) || 0);
+      })
+      .slice(0, 3);
+    const mostIncorrectQuestions = questionStats.filter((stat) => (Number(stat.wrongCount) || 0) > 0).slice(0, 3);
+    const attemptedQuizCount = attemptedLibraryQuizStats.length;
+    const passedQuizCount = attemptedLibraryQuizStats.filter((stat) => (Number(stat.bestScorePercent) || 0) >= 70).length;
+    const needsWorkQuizCount = attemptedQuizCount - passedQuizCount;
+
     return {
       totals: analytics.totals,
       recentSessions,
       recentAnswers,
       quizStats,
-      questionStats
+      questionStats,
+      attemptedLibraryQuizStats,
+      unattemptedQuizzes,
+      topPerformers,
+      leastPerformers,
+      mostIncorrectQuestions,
+      attemptedQuizCount,
+      passedQuizCount,
+      needsWorkQuizCount
     };
   }
 
@@ -2212,59 +2047,96 @@
       elements.analyticsSessionList,
       sessions,
       "No completed quiz sessions yet.",
-      8,
+      3,
       (session) =>
-        appendChildren(createElement("article", "analytics-row"), [
+        appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
           createAnalyticsRowCopy(
             session.quizName || "Untitled quiz",
-            `${session.folderPath || "/"} / ${formatTimestamp(session.completedAt)} / ${formatDuration(session.durationMs)}`,
-            `${session.correctCount || 0}/${session.questionCount || 0} correct`
+            `${session.correctCount || 0}/${session.questionCount || 0} correct`,
+            null
           ),
           createAnalyticsScoreChip(formatPercent(session.scorePercent))
         ])
     );
   }
 
-  function renderAnalyticsQuizzes(quizStats) {
-    renderCollection(
-      elements.analyticsQuizList,
-      quizStats,
-      "Quiz performance will appear after you finish a quiz.",
-      10,
-      (stat) =>
-        appendChildren(createElement("article", "analytics-row"), [
-          createAnalyticsRowCopy(
-            stat.quizName || "Untitled quiz",
-            `${stat.folderPath || "/"} / ${stat.attempts || 0} attempt${(stat.attempts || 0) === 1 ? "" : "s"}`,
-            `Best ${formatPercent(stat.bestScorePercent)} / Last ${formatPercent(stat.lastScorePercent)} / ${
-              stat.totalCorrect || 0
-            }/${stat.totalQuestions || 0} correct`
-          ),
-          createAnalyticsScoreChip(formatPercent(stat.averageScorePercent))
-        ])
+  function renderAnalyticsQuizzes(snapshot) {
+    const container = elements.analyticsQuizList;
+    container.innerHTML = "";
+
+    const summaryGrid = createElement("div", "analytics-performance-stat-grid");
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat("Attempted", String(snapshot.attemptedQuizCount), "Completed at least once")
     );
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat("70%+", String(snapshot.passedQuizCount), "Reached 70% or higher")
+    );
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat("Needs 70%+", String(snapshot.needsWorkQuizCount), "Still below 70%")
+    );
+    container.appendChild(summaryGrid);
+
+    const groups = createElement("div", "analytics-performance-groups");
+    groups.appendChild(
+      createAnalyticsPerformanceGroup(
+        "Top Performing",
+        snapshot.topPerformers,
+        "No attempted quizzes yet.",
+        (stat) =>
+          createAnalyticsMiniRow(
+            stat.quizName || "Untitled quiz",
+            `Avg ${formatPercent(stat.averageScorePercent)} / Best ${formatPercent(stat.bestScorePercent)} / ${
+              stat.attempts || 0
+            } attempt${(stat.attempts || 0) === 1 ? "" : "s"}`,
+            formatPercent(stat.averageScorePercent)
+          )
+      )
+    );
+    groups.appendChild(
+      createAnalyticsPerformanceGroup(
+        "Least Performing",
+        snapshot.leastPerformers,
+        "No attempted quizzes yet.",
+        (stat) =>
+          createAnalyticsMiniRow(
+            stat.quizName || "Untitled quiz",
+            `Avg ${formatPercent(stat.averageScorePercent)} / Best ${formatPercent(stat.bestScorePercent)} / ${
+              stat.attempts || 0
+            } attempt${(stat.attempts || 0) === 1 ? "" : "s"}`,
+            formatPercent(stat.averageScorePercent)
+          )
+      )
+    );
+    groups.appendChild(
+      createAnalyticsPerformanceGroup(
+        "Unattempted",
+        snapshot.unattemptedQuizzes.slice(0, 3),
+        "Every saved quiz has been attempted.",
+        (quiz) => createAnalyticsMiniRow(quiz.name || "Untitled quiz", "Not started yet", "New", "analytics-score-chip analytics-score-chip-muted")
+      )
+    );
+    container.appendChild(groups);
   }
 
   function renderAnalyticsQuestions(questionStats) {
     renderCollection(
       elements.analyticsQuestionList,
       questionStats,
-      "Question breakdown will appear after your first answers.",
-      12,
+      "Incorrect question trends will appear here.",
+      3,
       (stat) => {
         const attempts = Number(stat.attempts) || 0;
         const correctCount = Number(stat.correctCount) || 0;
         const wrongCount = Number(stat.wrongCount) || 0;
         const accuracy = attempts ? Math.round((correctCount / attempts) * 100) : 0;
 
-        return appendChildren(createElement("article", "analytics-row analytics-row-stacked"), [
-          createElement("p", "analytics-row-title", stat.questionText || "Untitled question"),
-          createElement("p", "analytics-row-meta", `${stat.quizName || "Unknown quiz"} / ${stat.folderPath || "/"}`),
-          createElement(
-            "p",
-            "analytics-row-detail",
-            `Accuracy ${accuracy}% / Right ${correctCount} / Wrong ${wrongCount} / Avg ${formatDuration(stat.averageTimeMs)}`
-          )
+        return appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
+          createAnalyticsRowCopy(
+            stat.questionText || "Untitled question",
+            stat.quizName || "Unknown quiz",
+            `Accuracy ${accuracy}%`
+          ),
+          createAnalyticsScoreChip(`${wrongCount} wrong`)
         ]);
       }
     );
@@ -2275,22 +2147,143 @@
       elements.analyticsAnswerList,
       answers,
       "Recent answers will show up here.",
-      18,
+      3,
       (answer) => {
         const detailText = answer.isCorrect
-          ? `Correct. Took ${formatDuration(answer.elapsedMs)}.`
-          : `Selected "${answer.selectedOption || "Unknown"}". Correct answer: "${answer.correctOption || "Unknown"}". Took ${formatDuration(answer.elapsedMs)}.`;
+          ? "Correct answer chosen."
+          : `Picked "${answer.selectedOption || "Unknown"}". Correct: "${answer.correctOption || "Unknown"}".`;
 
-        return appendChildren(createElement("article", "analytics-row analytics-row-answer"), [
+        return appendChildren(createElement("article", "analytics-row analytics-row-answer analytics-row-compact"), [
           createAnalyticsRowCopy(
             answer.questionText || "Untitled question",
-            `${answer.quizName || "Unknown quiz"} / ${answer.folderPath || "/"} / ${formatTimestamp(answer.answeredAt)}`,
+            answer.quizName || "Unknown quiz",
             detailText
           ),
           createAnalyticsAnswerBadge(answer.isCorrect)
         ]);
       }
     );
+  }
+
+  function renderAnalyticsScoreGraph(sessions) {
+    const container = elements.analyticsScoreGraph;
+    container.innerHTML = "";
+
+    const chartSessions = sessions.slice(0, 8).reverse();
+    if (!chartSessions.length) {
+      container.appendChild(createAnalyticsEmptyMessage("Complete quizzes to see your score trend."));
+      return;
+    }
+
+    const width = 360;
+    const height = 170;
+    const paddingLeft = 24;
+    const paddingRight = 12;
+    const paddingTop = 14;
+    const paddingBottom = 28;
+    const innerWidth = width - paddingLeft - paddingRight;
+    const innerHeight = height - paddingTop - paddingBottom;
+    const baselineY = paddingTop + innerHeight;
+    const scores = chartSessions.map((session) => clamp(Number(session.scorePercent) || 0, 0, 100));
+    const points = scores.map((score, index) => {
+      const x =
+        chartSessions.length === 1
+          ? paddingLeft + innerWidth / 2
+          : paddingLeft + (innerWidth * index) / (chartSessions.length - 1);
+      const y = baselineY - (score / 100) * innerHeight;
+      return { x, y, score };
+    });
+
+    const svg = createSvgElement("svg");
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("class", "analytics-line-chart");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Line chart showing score trend over recent attempts");
+
+    [0, 50, 100].forEach((tick) => {
+      const y = baselineY - (tick / 100) * innerHeight;
+      const gridLine = createSvgElement("line");
+      gridLine.setAttribute("x1", String(paddingLeft));
+      gridLine.setAttribute("y1", String(y));
+      gridLine.setAttribute("x2", String(width - paddingRight));
+      gridLine.setAttribute("y2", String(y));
+      gridLine.setAttribute("class", "analytics-line-chart-grid");
+      svg.appendChild(gridLine);
+
+      const label = createSvgElement("text");
+      label.setAttribute("x", "2");
+      label.setAttribute("y", String(y + 3));
+      label.setAttribute("class", "analytics-line-chart-axis");
+      label.textContent = `${tick}%`;
+      svg.appendChild(label);
+    });
+
+    const areaPoints = points.map((point) => `${point.x},${point.y}`).join(" ");
+    const area = createSvgElement("polygon");
+    area.setAttribute(
+      "points",
+      `${paddingLeft},${baselineY} ${areaPoints} ${points[points.length - 1].x},${baselineY}`
+    );
+    area.setAttribute("class", "analytics-line-chart-area");
+    svg.appendChild(area);
+
+    const polyline = createSvgElement("polyline");
+    polyline.setAttribute("points", areaPoints);
+    polyline.setAttribute("class", "analytics-line-chart-line");
+    svg.appendChild(polyline);
+
+    points.forEach((point) => {
+      const circle = createSvgElement("circle");
+      circle.setAttribute("cx", String(point.x));
+      circle.setAttribute("cy", String(point.y));
+      circle.setAttribute("r", "4");
+      circle.setAttribute("class", "analytics-line-chart-point");
+      svg.appendChild(circle);
+    });
+
+    chartSessions.forEach((session, index) => {
+      const label = createSvgElement("text");
+      label.setAttribute("x", String(points[index].x));
+      label.setAttribute("y", String(height - 8));
+      label.setAttribute("text-anchor", "middle");
+      label.setAttribute("class", "analytics-line-chart-axis");
+      label.textContent = String(index + 1);
+      svg.appendChild(label);
+    });
+
+    container.appendChild(svg);
+  }
+
+  function renderAnalyticsCoverageGraph(snapshot) {
+    const container = elements.analyticsCoverageGraph;
+    container.innerHTML = "";
+
+    const bars = [
+      { label: "Attempted", value: snapshot.attemptedQuizCount, tone: "default" },
+      { label: "70%+", value: snapshot.passedQuizCount, tone: "success" },
+      { label: "Below 70%", value: snapshot.needsWorkQuizCount, tone: "danger" },
+      { label: "Unattempted", value: snapshot.unattemptedQuizzes.length, tone: "muted" }
+    ];
+    const maxValue = Math.max(...bars.map((bar) => bar.value), 1);
+
+    const chart = createElement("div", "analytics-bar-chart");
+    bars.forEach((bar) => {
+      const row = createElement("div", "analytics-bar-row");
+      const copy = createElement("div", "analytics-bar-copy");
+      copy.appendChild(createElement("span", "analytics-bar-label", bar.label));
+      copy.appendChild(createElement("span", "analytics-bar-value", String(bar.value)));
+      row.appendChild(copy);
+
+      const track = createElement("div", "analytics-bar-track");
+      const fill = createElement("span", `analytics-bar-fill analytics-bar-fill-${bar.tone}`);
+      fill.style.width = `${(bar.value / maxValue) * 100}%`;
+      track.appendChild(fill);
+      row.appendChild(track);
+
+      chart.appendChild(row);
+    });
+
+    container.appendChild(chart);
   }
 
   // Refreshes the analytics dashboard from the current stored analytics snapshot.
@@ -2304,10 +2297,9 @@
 
     elements.analyticsEmpty.hidden = hasAnalyticsData;
     elements.analyticsContent.hidden = !hasAnalyticsData;
+    elements.analyticsSummaryCopy.textContent = "Recent scores and trends.";
 
     if (!hasAnalyticsData) {
-      elements.analyticsSummaryCopy.textContent =
-        "Track scores, timings, question accuracy, and recent answers across sampled quiz runs of up to 20 questions with 4 displayed answers each.";
       return;
     }
 
@@ -2317,9 +2309,6 @@
     const averageScore = totalSessions ? Math.round((Number(totals.totalScorePercent) || 0) / totalSessions) : 0;
     const correctRate = totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
-    elements.analyticsSummaryCopy.textContent =
-      `Tracking ${totalQuestions} answered questions across ${totalSessions} completed quiz runs. ` +
-      "Each run records up to 20 randomly selected questions with 4 displayed answers per question.";
     elements.analyticsTotalSessions.textContent = String(totalSessions);
     elements.analyticsAverageScore.textContent = formatPercent(averageScore);
     elements.analyticsCorrectRate.textContent = formatPercent(correctRate);
@@ -2327,9 +2316,11 @@
     elements.analyticsStudyTime.textContent = formatDuration(totals.totalTimeMs);
 
     renderAnalyticsSessions(snapshot.recentSessions);
-    renderAnalyticsQuizzes(snapshot.quizStats);
-    renderAnalyticsQuestions(snapshot.questionStats);
+    renderAnalyticsQuizzes(snapshot);
+    renderAnalyticsQuestions(snapshot.mostIncorrectQuestions);
     renderAnalyticsAnswers(snapshot.recentAnswers);
+    renderAnalyticsScoreGraph(snapshot.recentSessions);
+    renderAnalyticsCoverageGraph(snapshot);
   }
 
   function openAnalyticsScreen() {
@@ -2396,6 +2387,19 @@
   function closeAllMiniPopups() {
     setSoundPopupOpen(false);
     setThemePopupOpen(false);
+  }
+
+  function openGuideScreen() {
+    closeLibraryEditor();
+    clearError();
+    closeAllMiniPopups();
+    resetVictoryFeedback();
+    showScreen("guide");
+  }
+
+  function closeGuideScreen() {
+    closeAllMiniPopups();
+    showScreen(libraryRuntime.lastNonGuideScreen || "upload");
   }
 
   function handleGlobalPopupClose(event) {
@@ -2502,7 +2506,7 @@
     if (mode === "rename-folder") {
       const folder = getFolder(entityId);
       if (!folder || !folder.parentId) {
-        showError("The libarray root folder cannot be renamed.");
+        showError("The library root folder cannot be renamed.");
         return;
       }
 
@@ -3078,13 +3082,17 @@
     if (navigator.storage && typeof navigator.storage.getDirectory === "function") {
       try {
         const rootDirectory = await navigator.storage.getDirectory();
-        libraryRuntime.directoryHandle = await rootDirectory.getDirectoryHandle(LIBARRAY_DIRECTORY, { create: true });
+        libraryRuntime.directoryHandle = await rootDirectory.getDirectoryHandle(LIBRARY_DIRECTORY, { create: true });
         try {
-          libraryRuntime.legacyDirectoryHandle = await rootDirectory.getDirectoryHandle(LEGACY_LIBRARY_DIRECTORY, {
-            create: false
-          });
+          libraryRuntime.legacyDirectoryHandle = await rootDirectory.getDirectoryHandle(PREVIOUS_LIBRARY_DIRECTORY, { create: false });
         } catch (error) {
-          libraryRuntime.legacyDirectoryHandle = null;
+          try {
+            libraryRuntime.legacyDirectoryHandle = await rootDirectory.getDirectoryHandle(LEGACY_LIBRARY_DIRECTORY, {
+              create: false
+            });
+          } catch (legacyError) {
+            libraryRuntime.legacyDirectoryHandle = null;
+          }
         }
         libraryRuntime.mode = "opfs";
       } catch (error) {
@@ -3095,8 +3103,6 @@
     if (libraryRuntime.mode !== "opfs" && supportsLocalStorage()) {
       libraryRuntime.mode = "localStorage";
     }
-
-    await restoreProjectLibraryHandle();
 
     const rawModel = await readLibraryModelFromStorage();
     libraryRuntime.model = normalizeLibraryModel(rawModel);
@@ -3110,7 +3116,6 @@
 
     setTheme(libraryRuntime.model.settings.theme, false);
     setNotificationVolume(libraryRuntime.model.settings.volume, false);
-    refreshProjectLibraryButton();
     updateLibraryNote();
     refreshLibraryUI();
   }
@@ -3259,16 +3264,13 @@
     });
 
     elements.overviewFolderBtn.addEventListener("click", createOverviewForCurrentFolder);
-    elements.projectLibraryBtn.addEventListener("click", function () {
-      connectProjectLibraryFolder().catch(() => {
-        showError("Could not connect the project libarray folder.");
-      });
-    });
     elements.analyticsOpenBtn.addEventListener("click", openAnalyticsScreen);
+    elements.guideOpenBtn.addEventListener("click", openGuideScreen);
     elements.resultsAnalyticsBtn.addEventListener("click", openAnalyticsScreen);
     elements.analyticsBackBtn.addEventListener("click", function () {
       showScreen("upload");
     });
+    elements.guideBackBtn.addEventListener("click", closeGuideScreen);
     elements.newFolderBtn.addEventListener("click", createFolder);
     elements.upFolderBtn.addEventListener("click", goUpOneFolder);
     elements.libraryEditorSaveBtn.addEventListener("click", saveLibraryEditor);

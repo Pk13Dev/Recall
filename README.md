@@ -14,7 +14,7 @@ The app runs entirely in the browser. You can upload a single JSON quiz, import 
 - Selects those 4 answers from a larger answer pool when a question includes extra distractors
 - Shuffles answer positions without losing the correct answer
 - Tracks scores, question results, timestamps, and answer times
-- Stores imported quizzes locally in the built-in `libarray` library
+- Stores imported quizzes locally in the built-in browser library
 - Supports folders of quizzes, nested folders, and overview quiz generation
 - Includes analytics for recent sessions, quiz performance, most-missed questions, and recent answers
 - Works without a backend
@@ -26,7 +26,6 @@ The app runs entirely in the browser. You can upload a single JSON quiz, import 
 - `Open Folder` import for multiple quiz files at once
 - Friendly validation for invalid quiz JSON
 - Local library with folders and saved quizzes
-- Optional project-folder sync through the physical `libarray/` directory
 - Folder overview mode
 - Quiz sounds and answer feedback animations
 - Victory and loss end-of-quiz effects
@@ -65,8 +64,6 @@ You can load quizzes in three ways:
 - Click `Open Folder` to import a folder of quiz files
 
 Imported quizzes are stored locally in the app library.
-
-If you want the library to live in a real folder beside the app files, click `Connect libarray` and select the `libarray/` folder in the project directory.
 
 ### 4. Start a quiz
 
@@ -196,8 +193,7 @@ That means:
 - There is no backend server
 - There is no account system
 - Your library and analytics stay on your device in browser storage
-- Imported quizzes are stored in the app’s local `libarray` library
-- If you connect the project `libarray/` folder, RECALL also writes the managed library there as physical files
+- Imported quizzes are stored in the app's local browser library
 - If browser storage is unavailable, the app can fall back to temporary in-memory behavior for that session
 
 ## Analytics and tracking transparency
@@ -220,27 +216,6 @@ Tracked data includes:
 
 This tracking is used only inside the local app and is not sent to an external service.
 
-## Physical project library folder
-
-This project includes a real `libarray/` folder in the repository.
-
-If your browser supports direct folder access, you can click `Connect libarray` in the app and select that folder.
-
-If the browser keeps that permission, RECALL can reconnect to the same `libarray/` folder automatically on later launches and keep saving uploaded quizzes there without asking again.
-
-When connected, RECALL writes:
-
-- `libarray/library-model.json` for the full managed library state
-- `libarray/quizzes/` for the physical quiz files and folder structure
-
-This gives you a visible place in the project directory for the library instead of relying only on hidden browser-managed storage.
-
-Important note:
-
-- Browser security rules mean RECALL cannot automatically take control of your project folder on first load
-- The user still has to click `Connect libarray` once and choose that folder
-- If you do not connect it, the app still works using local browser storage
-
 ## Offline behavior
 
 RECALL is designed to work offline once the files are on your machine.
@@ -256,18 +231,15 @@ If you open `index.html` locally in a modern browser, the app can:
 
 ```text
 RECALL/
-├─ index.html
-├─ styles.css
-├─ app.js
-├─ README.md
-├─ sample-quiz.json
-├─ libarray/
-│  ├─ README.txt
-│  └─ quizzes/
-├─ win.mp3
-├─ fail.mp3
-├─ Victory.mp3
-└─ Loser.mp3
+|- index.html
+|- styles.css
+|- app.js
+|- README.md
+|- sample-quiz.json
+|- win.mp3
+|- fail.mp3
+|- Victory.mp3
+`- Loser.mp3
 ```
 
 ## Sharing with friends
@@ -279,11 +251,10 @@ To share RECALL:
 - tell them to open `index.html`
 - tell them to prepare quiz files in the supported JSON format
 
-Their saved library and analytics will stay local to their own browser on their own machine unless they explicitly connect the shared `libarray/` project folder for physical syncing.
+Their saved library and analytics will stay local to their own browser on their own machine.
 
 ## Notes
 
-- The managed library folder is now named `libarray`
 - Overview quizzes are generated from existing quizzes in eligible folders
 - Answers are shuffled at quiz start, but the original saved quiz data is kept unchanged
 
@@ -292,3 +263,4 @@ Their saved library and analytics will stay local to their own browser on their 
 This project is licensed under the MIT License.
 
 See the [LICENSE](./LICENSE) file for the full license text.
+
