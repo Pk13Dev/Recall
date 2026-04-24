@@ -162,8 +162,8 @@
   };
 
   const sounds = {
-    win: new Audio("./win.mp3"),
-    fail: new Audio("./fail.mp3"),
+    win: new Audio("./BaDing!.mp3"),
+    fail: new Audio("./DaDoo!.mp3"),
     victory: new Audio("./Victory.mp3"),
     loser: new Audio("./Loser.mp3")
   };
