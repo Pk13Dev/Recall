@@ -1,0 +1,40 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "Which planet is known as the Red Planet?",
+      "options": [
+        "Earth",
+        "Mars",
+        "Venus",
+        "Jupiter",
+        "Saturn"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "id": 2,
+      "question": "What is the capital of France?",
+      "options": [
+        "Madrid",
+        "Berlin",
+        "Paris",
+        "Rome",
+        "Lisbon"
+      ],
+      "correctIndex": 2
+    },
+    {
+      "id": 3,
+      "question": "How many minutes are in one hour?",
+      "options": [
+        "30",
+        "45",
+        "60",
+        "90",
+        "75"
+      ],
+      "correctIndex": 2
+    }
+  ]
+}
