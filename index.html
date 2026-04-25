@@ -87,7 +87,11 @@
         </div>
       </div>
       <p class="eyebrow">Study Better</p>
-      <h1>RECALL</h1>
+      <h1>
+        <button id="app-home-btn" class="app-home-btn" type="button" aria-label="Return to the main menu">
+          RECALL
+        </button>
+      </h1>
       <p class="tagline">Upload a JSON file. Start your quiz instantly.</p>
     </header>
 
@@ -98,20 +102,20 @@
             <div class="upload-card-copy">
               <p class="upload-kicker">Quick Import</p>
               <h2 id="upload-title">Upload Quiz JSON</h2>
-              <p class="screen-copy">Add one quiz file or bring in an entire folder. Everything stays local and study-ready.</p>
+              <p class="screen-copy">Add one quiz file, a ZIP of quizzes, or bring in an entire folder. Everything stays local and study-ready.</p>
             </div>
 
             <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload quiz JSON files or folders">
               <div class="drop-copy">
                 <p class="drop-title">Upload JSON</p>
-                <p class="drop-subtitle">Drop quiz files or folders anywhere in this panel, or use the actions below.</p>
+                <p class="drop-subtitle">Drop quiz files, ZIPs, or folders anywhere in this panel, or use the actions below.</p>
               </div>
               <div class="button-row upload-button-row">
                 <button id="choose-file-btn" class="btn btn-primary" type="button">Upload JSON</button>
                 <button id="choose-folder-btn" class="btn btn-secondary" type="button">Open Folder</button>
               </div>
-              <input id="file-input" type="file" accept=".json,application/json" hidden />
-              <input id="folder-input" type="file" accept=".json,application/json" webkitdirectory multiple hidden />
+              <input id="file-input" type="file" accept=".json,.zip,application/json,application/zip,application/x-zip-compressed" hidden />
+              <input id="folder-input" type="file" accept=".json,.zip,application/json,application/zip,application/x-zip-compressed" webkitdirectory multiple hidden />
             </div>
           </div>
 
@@ -126,12 +130,12 @@
             <div class="library-header-copy">
               <p class="library-kicker">Study Library</p>
               <h3 id="saved-title">Saved Quizzes</h3>
-              <p id="library-note" class="saved-note"></p>
-            </div>
-            <div class="library-actions">
-              <button id="new-folder-btn" class="btn btn-secondary btn-compact" type="button">New Folder</button>
-              <button id="overview-folder-btn" class="btn btn-secondary btn-compact" type="button" disabled>Overview</button>
-              <button id="up-folder-btn" class="btn btn-secondary btn-compact" type="button">Up</button>
+              <p id="library-note" class="saved-note" hidden></p>
+              <div class="library-actions">
+                <button id="new-folder-btn" class="btn btn-secondary btn-compact" type="button">New Folder</button>
+                <button id="overview-folder-btn" class="btn btn-secondary btn-compact" type="button" disabled>Overview</button>
+                <button id="up-folder-btn" class="btn btn-secondary btn-compact" type="button">Up</button>
+              </div>
             </div>
           </div>
           <nav id="library-breadcrumb" class="library-breadcrumb" aria-label="Library path"></nav>
@@ -223,24 +227,39 @@
               <p class="analytics-stat-note">Finished quiz attempts</p>
             </article>
             <article class="card analytics-stat-card">
+              <p class="analytics-stat-label">Accuracy</p>
+              <h3 id="analytics-accuracy" class="analytics-stat-value">0%</h3>
+              <p class="analytics-stat-note">Global correct-answer rate</p>
+            </article>
+            <article class="card analytics-stat-card">
               <p class="analytics-stat-label">Average Score</p>
               <h3 id="analytics-average-score" class="analytics-stat-value">0%</h3>
               <p class="analytics-stat-note">Across tracked quiz runs</p>
             </article>
             <article class="card analytics-stat-card">
-              <p class="analytics-stat-label">Correct Rate</p>
-              <h3 id="analytics-correct-rate" class="analytics-stat-value">0%</h3>
-              <p class="analytics-stat-note">Questions answered correctly</p>
+              <p class="analytics-stat-label">Average Answer</p>
+              <h3 id="analytics-average-answer-time" class="analytics-stat-value">0s</h3>
+              <p class="analytics-stat-note">Time spent per answered question</p>
             </article>
             <article class="card analytics-stat-card">
-              <p class="analytics-stat-label">Questions Answered</p>
-              <h3 id="analytics-question-volume" class="analytics-stat-value">0</h3>
-              <p class="analytics-stat-note">Tracked sampled question attempts</p>
+              <p class="analytics-stat-label">Questions / Minute</p>
+              <h3 id="analytics-questions-per-minute" class="analytics-stat-value">0</h3>
+              <p class="analytics-stat-note">Global quiz pace</p>
             </article>
             <article class="card analytics-stat-card">
               <p class="analytics-stat-label">Study Time</p>
               <h3 id="analytics-study-time" class="analytics-stat-value">0m</h3>
               <p class="analytics-stat-note">Total time spent in quizzes</p>
+            </article>
+            <article class="card analytics-stat-card">
+              <p class="analytics-stat-label">Rolling Average</p>
+              <h3 id="analytics-rolling-average" class="analytics-stat-value">0%</h3>
+              <p class="analytics-stat-note">Last 5 scored sessions</p>
+            </article>
+            <article class="card analytics-stat-card">
+              <p class="analytics-stat-label">Consistency</p>
+              <h3 id="analytics-consistency" class="analytics-stat-value">0%</h3>
+              <p class="analytics-stat-note">Higher is steadier</p>
             </article>
           </div>
 
@@ -258,11 +277,11 @@
             <section class="card analytics-panel">
               <div class="analytics-panel-header">
                 <div>
-                  <p class="analytics-panel-kicker">Answers</p>
-                  <h3>Recent Answers</h3>
+                  <p class="analytics-panel-kicker">Behaviour</p>
+                  <h3>Behavior Patterns</h3>
                 </div>
               </div>
-              <div id="analytics-answer-list" class="analytics-list analytics-list-compact"></div>
+              <div id="analytics-behavior-list" class="analytics-list"></div>
             </section>
 
             <section class="card analytics-panel analytics-panel-wide">
@@ -288,6 +307,36 @@
             <section class="card analytics-panel analytics-panel-wide">
               <div class="analytics-panel-header">
                 <div>
+                  <p class="analytics-panel-kicker">Time</p>
+                  <h3>Time Insights</h3>
+                </div>
+              </div>
+              <div id="analytics-time-list" class="analytics-list"></div>
+            </section>
+
+            <section class="card analytics-panel analytics-panel-wide">
+              <div class="analytics-panel-header">
+                <div>
+                  <p class="analytics-panel-kicker">Topics</p>
+                  <h3>Topic Strength</h3>
+                </div>
+              </div>
+              <div id="analytics-topic-list" class="analytics-list"></div>
+            </section>
+
+            <section class="card analytics-panel analytics-panel-wide">
+              <div class="analytics-panel-header">
+                <div>
+                  <p class="analytics-panel-kicker">Answers</p>
+                  <h3>Recent Answers</h3>
+                </div>
+              </div>
+              <div id="analytics-answer-list" class="analytics-list analytics-list-compact"></div>
+            </section>
+
+            <section class="card analytics-panel analytics-panel-wide">
+              <div class="analytics-panel-header">
+                <div>
                   <p class="analytics-panel-kicker">Graphs</p>
                   <h3>Progress Graphs</h3>
                 </div>
@@ -299,7 +348,7 @@
                       <p class="analytics-panel-kicker">Trend</p>
                       <h4 class="analytics-graph-title">Recent Score Trend</h4>
                     </div>
-                    <p class="analytics-graph-note">Last 8 attempts</p>
+                    <p class="analytics-graph-note">Last 8 attempts + rolling average</p>
                   </div>
                   <div id="analytics-score-graph" class="analytics-graph-body"></div>
                 </article>

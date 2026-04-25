@@ -312,6 +312,7 @@ body.theme-vibrant .app-shell::before {
   top: calc(100% + 0.42rem);
   right: 0;
   width: 180px;
+  max-width: min(220px, calc(100vw - 20px));
   padding: 0.55rem 0.6rem;
   border-radius: 10px;
   border: 1px solid var(--surface-border);
@@ -385,6 +386,28 @@ h1 {
   margin: 0.3rem 0;
   font-size: clamp(2rem, 4vw, 2.7rem);
   letter-spacing: -0.03em;
+}
+
+.app-home-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.app-home-btn:hover {
+  color: var(--accent);
+}
+
+.app-home-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 6px;
+  border-radius: 10px;
 }
 
 .tagline {
@@ -618,17 +641,19 @@ h3 {
 }
 
 .saved-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.7rem;
   margin-bottom: 0.95rem;
 }
 
 .library-header-copy {
   display: grid;
-  gap: 0.18rem;
-  max-width: 40rem;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 30rem;
+  justify-items: center;
+  text-align: center;
 }
 
 .library-header-copy h3 {
@@ -645,15 +670,18 @@ h3 {
 }
 
 .library-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  width: 100%;
+  justify-content: center;
 }
 
 .library-actions .btn {
+  width: 100%;
   border-radius: 999px;
-  padding: 0.55rem 0.88rem;
+  padding: 0.56rem 0.72rem;
+  font-size: 0.82rem;
   background: color-mix(in srgb, var(--secondary-bg) 82%, var(--surface) 18%);
 }
 
@@ -940,6 +968,50 @@ h3 {
   flex-wrap: wrap;
   flex-shrink: 0;
   justify-content: flex-end;
+}
+
+.saved-action-menu-wrap {
+  position: relative;
+}
+
+.saved-action-menu {
+  position: relative;
+}
+
+.saved-action-menu-toggle {
+  min-width: 6.2rem;
+}
+
+.saved-action-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 8.25rem;
+  padding: 0.38rem;
+  border: 1px solid color-mix(in srgb, var(--surface-border) 75%, var(--accent-soft) 25%);
+  border-radius: 12px;
+  background: var(--popup-bg);
+  box-shadow: var(--panel-shadow);
+  display: grid;
+  gap: 0.3rem;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 130ms ease, transform 130ms ease;
+  z-index: 24;
+}
+
+.saved-action-menu.is-open .saved-action-menu-panel {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.saved-action-menu-panel .saved-item-btn {
+  width: 100%;
+  text-align: left;
+  border-radius: 9px;
+  padding: 0.42rem 0.62rem;
 }
 
 .saved-item-btn {
@@ -1312,7 +1384,7 @@ h3 {
 
 .analytics-summary-copy {
   margin-bottom: 0;
-  max-width: 20rem;
+  max-width: 34rem;
 }
 
 .analytics-hero-actions {
@@ -1331,7 +1403,7 @@ h3 {
 
 .analytics-stat-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
@@ -1551,6 +1623,10 @@ h3 {
   gap: 0.8rem;
 }
 
+.analytics-performance-groups-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .analytics-performance-group {
   border: 1px solid color-mix(in srgb, var(--surface-border) 80%, var(--accent-soft) 20%);
   border-radius: 18px;
@@ -1664,6 +1740,12 @@ h3 {
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.analytics-line-chart-line-secondary {
+  stroke: color-mix(in srgb, var(--success) 72%, var(--accent) 28%);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
 }
 
 .analytics-line-chart-point {
@@ -1848,6 +1930,7 @@ h3 {
 @media (max-width: 920px) {
   .analytics-performance-stat-grid,
   .analytics-performance-groups,
+  .analytics-performance-groups-two,
   .analytics-graph-grid {
     grid-template-columns: 1fr;
   }
@@ -1911,8 +1994,7 @@ h3 {
   }
 
   .upload-button-row .btn,
-  .upload-card-footer .btn,
-  .library-actions .btn {
+  .upload-card-footer .btn {
     width: auto;
   }
 
@@ -1931,7 +2013,22 @@ h3 {
 
   .saved-item-actions {
     width: 100%;
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-content: stretch;
+    align-items: start;
+    gap: 0.45rem;
+  }
+
+  .saved-action-menu-toggle {
+    min-width: 5.8rem;
+    font-size: 0.78rem;
+    padding: 0.42rem 0.68rem;
+  }
+
+  .saved-action-menu-panel {
+    right: 0;
+    min-width: 7.6rem;
   }
 
   .guide-hero-card,
@@ -1985,8 +2082,13 @@ h3 {
   }
 
   .library-actions {
+    gap: 0.35rem;
+  }
+
+  .library-actions .btn {
     width: 100%;
-    justify-content: flex-start;
+    padding: 0.46rem 0.5rem;
+    font-size: 0.74rem;
   }
 
   .modal-actions {

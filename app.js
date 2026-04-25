@@ -20,6 +20,7 @@
     guideOpenBtn: document.getElementById("guide-open-btn"),
     newFolderBtn: document.getElementById("new-folder-btn"),
     upFolderBtn: document.getElementById("up-folder-btn"),
+    appHomeBtn: document.getElementById("app-home-btn"),
     themeToggleBtn: document.getElementById("theme-toggle-btn"),
     themePopup: document.getElementById("theme-popup"),
     themeValue: document.getElementById("theme-value"),
@@ -57,14 +58,20 @@
     analyticsEmpty: document.getElementById("analytics-empty"),
     analyticsContent: document.getElementById("analytics-content"),
     analyticsTotalSessions: document.getElementById("analytics-total-sessions"),
+    analyticsAccuracy: document.getElementById("analytics-accuracy"),
     analyticsAverageScore: document.getElementById("analytics-average-score"),
-    analyticsCorrectRate: document.getElementById("analytics-correct-rate"),
-    analyticsQuestionVolume: document.getElementById("analytics-question-volume"),
+    analyticsAverageAnswerTime: document.getElementById("analytics-average-answer-time"),
+    analyticsQuestionsPerMinute: document.getElementById("analytics-questions-per-minute"),
     analyticsStudyTime: document.getElementById("analytics-study-time"),
+    analyticsRollingAverage: document.getElementById("analytics-rolling-average"),
+    analyticsConsistency: document.getElementById("analytics-consistency"),
     analyticsSessionList: document.getElementById("analytics-session-list"),
     analyticsQuizList: document.getElementById("analytics-quiz-list"),
     analyticsQuestionList: document.getElementById("analytics-question-list"),
     analyticsAnswerList: document.getElementById("analytics-answer-list"),
+    analyticsBehaviorList: document.getElementById("analytics-behavior-list"),
+    analyticsTimeList: document.getElementById("analytics-time-list"),
+    analyticsTopicList: document.getElementById("analytics-topic-list"),
     analyticsScoreGraph: document.getElementById("analytics-score-graph"),
     analyticsCoverageGraph: document.getElementById("analytics-coverage-graph"),
     confettiLayer: document.getElementById("confetti-layer"),
@@ -131,6 +138,8 @@
   const LEGACY_LOCAL_PREFIX = "libaray::";
   const MAX_RECENT_ANALYTIC_SESSIONS = 180;
   const MAX_RECENT_ANALYTIC_ANSWERS = 2000;
+  const ANALYTICS_BEHAVIOR_THRESHOLD_MS = 5000;
+  const ANALYTICS_ROLLING_WINDOW = 5;
   const fireworkColors = ["#3ea66a", "#6bc58d", "#4e7b72", "#8cd9af", "#9fd5c5"];
 
   const quizState = {
@@ -177,6 +186,26 @@
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
+  }
+
+  function safeDivide(numerator, denominator, fallback) {
+    const top = Number(numerator);
+    const bottom = Number(denominator);
+    if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom === 0) {
+      return fallback === undefined ? 0 : fallback;
+    }
+    return top / bottom;
+  }
+
+  function roundTo(value, digits) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+      return 0;
+    }
+
+    const precision = Number.isInteger(digits) ? Math.max(digits, 0) : 0;
+    const multiplier = 10 ** precision;
+    return Math.round(amount * multiplier) / multiplier;
   }
 
   function safeJsonParse(text, fallbackValue) {
@@ -699,6 +728,285 @@
     return rawData.questions.map(normalizeQuestion);
   }
 
+  function createDefaultDailyStat() {
+    return {
+      studyTimeMs: 0,
+      sessionsCompleted: 0,
+      questionsAnswered: 0,
+      correctAnswers: 0
+    };
+  }
+
+  function createDefaultBehaviorStats() {
+    return {
+      thresholdMs: ANALYTICS_BEHAVIOR_THRESHOLD_MS,
+      guessWrongCount: 0,
+      slowErrorCount: 0,
+      fastCorrectCount: 0,
+      totalAnswersTracked: 0
+    };
+  }
+
+  function createDefaultScoreMoments() {
+    return { count: 0, mean: 0, m2: 0 };
+  }
+
+  function createDefaultTrendRegression() {
+    return { count: 0, sumX: 0, sumY: 0, sumXY: 0, sumX2: 0 };
+  }
+
+  function createDefaultStreakStats() {
+    return { currentCorrectStreak: 0, bestCorrectStreak: 0 };
+  }
+
+  function createDefaultDropoffStats() {
+    return { sessionsTracked: 0, totalDropoff: 0 };
+  }
+
+  function createDefaultTopicEntry(label) {
+    return {
+      label: label || "Unknown",
+      attempts: 0,
+      totalScorePercent: 0,
+      averageScorePercent: 0
+    };
+  }
+
+  function normalizeBooleanResult(value, fallback) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (value === "correct") {
+      return true;
+    }
+    if (value === "wrong") {
+      return false;
+    }
+    return Boolean(fallback);
+  }
+
+  function getLocalDateKey(timestamp) {
+    const value = Number(timestamp);
+    if (!value) {
+      return "";
+    }
+
+    const date = new Date(value);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function ensureDailyStatBucket(analytics, dateKey) {
+    if (!analytics.dailyStats[dateKey]) {
+      analytics.dailyStats[dateKey] = createDefaultDailyStat();
+    }
+    return analytics.dailyStats[dateKey];
+  }
+
+  function updateRunningMoments(moments, value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+      return moments;
+    }
+
+    const next = moments || createDefaultScoreMoments();
+    next.count += 1;
+    const delta = amount - next.mean;
+    next.mean += delta / next.count;
+    const delta2 = amount - next.mean;
+    next.m2 += delta * delta2;
+    return next;
+  }
+
+  function getVarianceFromMoments(moments) {
+    if (!moments || (Number(moments.count) || 0) <= 0) {
+      return null;
+    }
+    return safeDivide(Number(moments.m2) || 0, Number(moments.count) || 0, null);
+  }
+
+  function getStdDevFromMoments(moments) {
+    const variance = getVarianceFromMoments(moments);
+    return Number.isFinite(variance) ? Math.sqrt(Math.max(variance, 0)) : null;
+  }
+
+  function getConsistencyFromStdDev(stdDev) {
+    const amount = Number(stdDev);
+    if (!Number.isFinite(amount)) {
+      return null;
+    }
+    return safeDivide(1, 1 + amount, null);
+  }
+
+  function updateRegressionTotals(regression, timestamp, scorePercent) {
+    const x = Number(timestamp);
+    const y = Number(scorePercent);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return regression;
+    }
+
+    const next = regression || createDefaultTrendRegression();
+    next.count += 1;
+    next.sumX += x;
+    next.sumY += y;
+    next.sumXY += x * y;
+    next.sumX2 += x * x;
+    return next;
+  }
+
+  function getRegressionSlope(regression) {
+    if (!regression || (Number(regression.count) || 0) < 2) {
+      return null;
+    }
+
+    const count = Number(regression.count) || 0;
+    const numerator = count * (Number(regression.sumXY) || 0) - (Number(regression.sumX) || 0) * (Number(regression.sumY) || 0);
+    const denominator = count * (Number(regression.sumX2) || 0) - (Number(regression.sumX) || 0) ** 2;
+    return safeDivide(numerator, denominator, null);
+  }
+
+  function calculateQuestionMastery(accuracyRatio, averageTimeMs) {
+    const accuracy = Number(accuracyRatio);
+    const averageTime = Number(averageTimeMs);
+    if (!Number.isFinite(accuracy) || !Number.isFinite(averageTime)) {
+      return null;
+    }
+
+    const denominator = Math.max(Math.log(averageTime + 1), 1);
+    return safeDivide(accuracy, denominator, null);
+  }
+
+  function calculateHalfAccuracy(answers, startIndex, endIndex) {
+    const subset = answers.slice(startIndex, endIndex);
+    if (!subset.length) {
+      return null;
+    }
+    const correctCount = subset.reduce((sum, answer) => sum + (answer && answer.isCorrect ? 1 : 0), 0);
+    return safeDivide(correctCount, subset.length, null);
+  }
+
+  function calculateSessionDropoff(answers) {
+    if (!Array.isArray(answers) || !answers.length) {
+      return {
+        firstHalfAccuracy: null,
+        secondHalfAccuracy: null,
+        dropoffRate: null
+      };
+    }
+
+    const midpoint = Math.ceil(answers.length / 2);
+    const firstHalfAccuracy = calculateHalfAccuracy(answers, 0, midpoint);
+    const secondHalfAccuracy = calculateHalfAccuracy(answers, midpoint, answers.length);
+    return {
+      firstHalfAccuracy,
+      secondHalfAccuracy,
+      dropoffRate:
+        Number.isFinite(firstHalfAccuracy) && Number.isFinite(secondHalfAccuracy)
+          ? firstHalfAccuracy - secondHalfAccuracy
+          : null
+    };
+  }
+
+  function normalizeTopicEntry(rawEntry, fallbackLabel) {
+    const entry = createDefaultTopicEntry(
+      rawEntry && typeof rawEntry.label === "string" && rawEntry.label.trim() ? rawEntry.label.trim() : fallbackLabel
+    );
+    if (!rawEntry || typeof rawEntry !== "object" || Array.isArray(rawEntry)) {
+      return entry;
+    }
+
+    entry.attempts = Number(rawEntry.attempts) || 0;
+    entry.totalScorePercent = Number(rawEntry.totalScorePercent) || 0;
+    entry.averageScorePercent = Number(rawEntry.averageScorePercent) || 0;
+    return entry;
+  }
+
+  function normalizeTopicMap(rawMap) {
+    const normalized = {};
+    if (!rawMap || typeof rawMap !== "object" || Array.isArray(rawMap)) {
+      return normalized;
+    }
+
+    Object.entries(rawMap).forEach(([key, value]) => {
+      normalized[key] = normalizeTopicEntry(value, key);
+    });
+    return normalized;
+  }
+
+  function ensureTopicEntry(topicMap, key, label) {
+    if (!topicMap[key]) {
+      topicMap[key] = createDefaultTopicEntry(label);
+    } else if (!topicMap[key].label && label) {
+      topicMap[key].label = label;
+    }
+    return topicMap[key];
+  }
+
+  function updateTopicEntry(entry, scorePercent) {
+    entry.attempts += 1;
+    entry.totalScorePercent += Number(scorePercent) || 0;
+    entry.averageScorePercent = roundTo(safeDivide(entry.totalScorePercent, entry.attempts, 0), 1);
+  }
+
+  function decorateQuestionStat(rawStat) {
+    const stat = { ...rawStat };
+    stat.attempts = Number(stat.attempts) || 0;
+    stat.correctCount = Number(stat.correctCount) || 0;
+    stat.wrongCount = Number(stat.wrongCount) || 0;
+    stat.totalTimeMs = Number(stat.totalTimeMs) || 0;
+    stat.averageTimeMs = stat.attempts ? Math.round(stat.totalTimeMs / stat.attempts) : 0;
+    stat.lastAnsweredAt = Number(stat.lastAnsweredAt) || 0;
+    stat.firstAnsweredAt = Number(stat.firstAnsweredAt) || stat.lastAnsweredAt || 0;
+    stat.lastResult = normalizeBooleanResult(stat.lastResult, false);
+    stat.firstResult = normalizeBooleanResult(stat.firstResult, stat.lastResult);
+    stat.fastWrongCount = Number(stat.fastWrongCount) || 0;
+    stat.slowWrongCount = Number(stat.slowWrongCount) || 0;
+    stat.fastCorrectCount = Number(stat.fastCorrectCount) || 0;
+    stat.questionAccuracy = safeDivide(stat.correctCount, stat.attempts, null);
+    stat.difficulty = stat.attempts ? 1 - stat.questionAccuracy : null;
+    stat.errorRate = safeDivide(stat.wrongCount, stat.attempts, null);
+    stat.masteryScore = calculateQuestionMastery(stat.questionAccuracy, stat.averageTimeMs);
+    return stat;
+  }
+
+  function decorateQuizStat(rawStat) {
+    const stat = { ...rawStat };
+    stat.attempts = Number(stat.attempts) || 0;
+    stat.totalQuestions = Number(stat.totalQuestions) || 0;
+    stat.totalCorrect = Number(stat.totalCorrect) || 0;
+    stat.totalTimeMs = Number(stat.totalTimeMs) || 0;
+    stat.totalScorePercent = Number(stat.totalScorePercent) || 0;
+    stat.averageScorePercent = stat.attempts ? Math.round(stat.totalScorePercent / stat.attempts) : 0;
+    stat.bestScorePercent = Number(stat.bestScorePercent) || 0;
+    stat.lastCompletedAt = Number(stat.lastCompletedAt) || 0;
+    stat.lastScorePercent = Number(stat.lastScorePercent) || 0;
+    stat.firstCompletedAt = Number(stat.firstCompletedAt) || stat.lastCompletedAt || 0;
+    stat.firstScorePercent = Number.isFinite(Number(stat.firstScorePercent))
+      ? Number(stat.firstScorePercent)
+      : stat.lastScorePercent || 0;
+    stat.quizAccuracy = safeDivide(stat.totalCorrect, stat.totalQuestions, null);
+    stat.retentionChange = stat.lastScorePercent - stat.firstScorePercent;
+    stat.scoreMean = Number.isFinite(Number(stat.scoreMean)) ? Number(stat.scoreMean) : stat.averageScorePercent;
+    stat.scoreM2 = Number(stat.scoreM2) || 0;
+    stat.scoreVariance = Number.isFinite(Number(stat.scoreVariance))
+      ? Number(stat.scoreVariance)
+      : stat.attempts
+        ? safeDivide(stat.scoreM2, stat.attempts, 0)
+        : 0;
+    stat.scoreStdDev = Number.isFinite(Number(stat.scoreStdDev))
+      ? Number(stat.scoreStdDev)
+      : Math.sqrt(Math.max(stat.scoreVariance, 0));
+    stat.consistencyScore = Number.isFinite(Number(stat.consistencyScore))
+      ? Number(stat.consistencyScore)
+      : getConsistencyFromStdDev(stat.scoreStdDev);
+    stat.timePerCorrectMs = Number.isFinite(Number(stat.timePerCorrectMs))
+      ? Number(stat.timePerCorrectMs)
+      : safeDivide(stat.totalTimeMs, stat.totalCorrect, null);
+    return stat;
+  }
+
   function createDefaultAnalyticsModel() {
     return {
       counters: { session: 0, answer: 0 },
@@ -712,8 +1020,117 @@
       recentSessions: [],
       recentAnswers: [],
       quizStats: {},
-      questionStats: {}
+      questionStats: {},
+      dailyStats: {},
+      behaviorStats: createDefaultBehaviorStats(),
+      scoreMoments: createDefaultScoreMoments(),
+      trendRegression: createDefaultTrendRegression(),
+      streakStats: createDefaultStreakStats(),
+      dropoffStats: createDefaultDropoffStats(),
+      topicStats: {
+        byFolder: {},
+        byQuizKind: {}
+      }
     };
+  }
+
+  function seedAnalyticsFromHistory(analytics) {
+    const shouldSeedBehavior = (Number(analytics.behaviorStats.totalAnswersTracked) || 0) <= 0;
+    const shouldSeedStreak = (Number(analytics.streakStats.bestCorrectStreak) || 0) <= 0;
+    const shouldSeedDaily = Object.keys(analytics.dailyStats).length === 0;
+    const shouldSeedMoments = (Number(analytics.scoreMoments.count) || 0) <= 0;
+    const shouldSeedRegression = (Number(analytics.trendRegression.count) || 0) <= 0;
+    const shouldSeedTopics =
+      !Object.keys(analytics.topicStats.byFolder).length && !Object.keys(analytics.topicStats.byQuizKind).length;
+    const shouldSeedDropoff = (Number(analytics.dropoffStats.sessionsTracked) || 0) <= 0;
+    const answersAscending = analytics.recentAnswers
+      .slice()
+      .sort((left, right) => (Number(left.answeredAt) || 0) - (Number(right.answeredAt) || 0));
+    const sessionsAscending = analytics.recentSessions
+      .slice()
+      .sort((left, right) => (Number(left.completedAt) || 0) - (Number(right.completedAt) || 0));
+
+    if (shouldSeedBehavior || shouldSeedStreak) {
+      let currentStreak = 0;
+      let bestStreak = Number(analytics.streakStats.bestCorrectStreak) || 0;
+      answersAscending.forEach((answer) => {
+        const elapsedMs = Number(answer.elapsedMs) || 0;
+        const isCorrect = Boolean(answer.isCorrect);
+
+        if (shouldSeedBehavior) {
+          analytics.behaviorStats.totalAnswersTracked += 1;
+          if (!isCorrect && elapsedMs < analytics.behaviorStats.thresholdMs) {
+            analytics.behaviorStats.guessWrongCount += 1;
+          }
+          if (!isCorrect && elapsedMs > analytics.behaviorStats.thresholdMs) {
+            analytics.behaviorStats.slowErrorCount += 1;
+          }
+          if (isCorrect && elapsedMs < analytics.behaviorStats.thresholdMs) {
+            analytics.behaviorStats.fastCorrectCount += 1;
+          }
+        }
+
+        if (isCorrect) {
+          currentStreak += 1;
+          bestStreak = Math.max(bestStreak, currentStreak);
+        } else {
+          currentStreak = 0;
+        }
+      });
+      if (shouldSeedStreak) {
+        analytics.streakStats.currentCorrectStreak = currentStreak;
+        analytics.streakStats.bestCorrectStreak = bestStreak;
+      }
+    }
+
+    sessionsAscending.forEach((session, index) => {
+      const scorePercent = Number(session.scorePercent) || 0;
+      const completedAt = Number(session.completedAt) || 0;
+      const durationMs = Number(session.durationMs) || 0;
+      const questionCount = Number(session.questionCount) || 0;
+      const correctCount = Number(session.correctCount) || 0;
+
+      if (shouldSeedDaily && completedAt) {
+        const bucket = ensureDailyStatBucket(analytics, getLocalDateKey(completedAt));
+        bucket.studyTimeMs += durationMs;
+        bucket.sessionsCompleted += 1;
+        bucket.questionsAnswered += questionCount;
+        bucket.correctAnswers += correctCount;
+      }
+
+      if (shouldSeedMoments) {
+        updateRunningMoments(analytics.scoreMoments, scorePercent);
+      }
+
+      if (shouldSeedRegression && completedAt) {
+        updateRegressionTotals(analytics.trendRegression, completedAt, scorePercent);
+      }
+
+      if (shouldSeedTopics) {
+        const folderKey = session.folderId || session.folderPath || session.folderName || "library";
+        updateTopicEntry(
+          ensureTopicEntry(analytics.topicStats.byFolder, folderKey, session.folderName || session.folderPath || "Library"),
+          scorePercent
+        );
+        const kindKey = session.quizKind || "quiz";
+        updateTopicEntry(ensureTopicEntry(analytics.topicStats.byQuizKind, kindKey, kindKey), scorePercent);
+      }
+
+      if (shouldSeedDropoff && Number.isFinite(Number(session.dropoffRate))) {
+        analytics.dropoffStats.sessionsTracked += 1;
+        analytics.dropoffStats.totalDropoff += Number(session.dropoffRate);
+      }
+
+      if (!Number.isFinite(Number(session.efficiency))) {
+        session.efficiency = safeDivide(scorePercent, durationMs, null);
+      }
+      if (!Number.isFinite(Number(session.questionsPerMinute))) {
+        session.questionsPerMinute = safeDivide(questionCount, durationMs / 60000, null);
+      }
+      if (!Number.isFinite(Number(session.scoreDelta))) {
+        session.scoreDelta = index > 0 ? scorePercent - (Number(sessionsAscending[index - 1].scorePercent) || 0) : null;
+      }
+    });
   }
 
   function normalizeAnalyticsModel(rawAnalytics) {
@@ -736,14 +1153,35 @@
     if (Array.isArray(rawAnalytics.recentSessions)) {
       analytics.recentSessions = rawAnalytics.recentSessions
         .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
-        .map((entry) => ({ ...entry }))
+        .map((entry) => ({
+          ...entry,
+          startedAt: Number(entry.startedAt) || 0,
+          completedAt: Number(entry.completedAt) || 0,
+          durationMs: Number(entry.durationMs) || 0,
+          questionCount: Number(entry.questionCount) || 0,
+          correctCount: Number(entry.correctCount) || 0,
+          wrongCount: Number(entry.wrongCount) || 0,
+          scorePercent: Number(entry.scorePercent) || 0,
+          averageAnswerMs: Number(entry.averageAnswerMs) || 0,
+          efficiency: Number.isFinite(Number(entry.efficiency)) ? Number(entry.efficiency) : null,
+          questionsPerMinute: Number.isFinite(Number(entry.questionsPerMinute)) ? Number(entry.questionsPerMinute) : null,
+          scoreDelta: Number.isFinite(Number(entry.scoreDelta)) ? Number(entry.scoreDelta) : null,
+          firstHalfAccuracy: Number.isFinite(Number(entry.firstHalfAccuracy)) ? Number(entry.firstHalfAccuracy) : null,
+          secondHalfAccuracy: Number.isFinite(Number(entry.secondHalfAccuracy)) ? Number(entry.secondHalfAccuracy) : null,
+          dropoffRate: Number.isFinite(Number(entry.dropoffRate)) ? Number(entry.dropoffRate) : null
+        }))
         .slice(0, MAX_RECENT_ANALYTIC_SESSIONS);
     }
 
     if (Array.isArray(rawAnalytics.recentAnswers)) {
       analytics.recentAnswers = rawAnalytics.recentAnswers
         .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
-        .map((entry) => ({ ...entry }))
+        .map((entry) => ({
+          ...entry,
+          answeredAt: Number(entry.answeredAt) || 0,
+          elapsedMs: Number(entry.elapsedMs) || 0,
+          isCorrect: Boolean(entry.isCorrect)
+        }))
         .slice(0, MAX_RECENT_ANALYTIC_ANSWERS);
     }
 
@@ -752,7 +1190,7 @@
         if (!value || typeof value !== "object" || Array.isArray(value)) {
           return;
         }
-        analytics.quizStats[key] = { ...value };
+        analytics.quizStats[key] = decorateQuizStat({ ...value });
       });
     }
 
@@ -765,17 +1203,68 @@
         if (!value || typeof value !== "object" || Array.isArray(value)) {
           return;
         }
-        analytics.questionStats[key] = { ...value };
+        analytics.questionStats[key] = decorateQuestionStat({ ...value });
       });
     }
 
+    if (rawAnalytics.dailyStats && typeof rawAnalytics.dailyStats === "object" && !Array.isArray(rawAnalytics.dailyStats)) {
+      Object.entries(rawAnalytics.dailyStats).forEach(([key, value]) => {
+        const bucket = createDefaultDailyStat();
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          bucket.studyTimeMs = Number(value.studyTimeMs) || 0;
+          bucket.sessionsCompleted = Number(value.sessionsCompleted) || 0;
+          bucket.questionsAnswered = Number(value.questionsAnswered) || 0;
+          bucket.correctAnswers = Number(value.correctAnswers) || 0;
+        }
+        analytics.dailyStats[key] = bucket;
+      });
+    }
+
+    if (rawAnalytics.behaviorStats && typeof rawAnalytics.behaviorStats === "object" && !Array.isArray(rawAnalytics.behaviorStats)) {
+      analytics.behaviorStats.thresholdMs = Number(rawAnalytics.behaviorStats.thresholdMs) || ANALYTICS_BEHAVIOR_THRESHOLD_MS;
+      analytics.behaviorStats.guessWrongCount = Number(rawAnalytics.behaviorStats.guessWrongCount) || 0;
+      analytics.behaviorStats.slowErrorCount = Number(rawAnalytics.behaviorStats.slowErrorCount) || 0;
+      analytics.behaviorStats.fastCorrectCount = Number(rawAnalytics.behaviorStats.fastCorrectCount) || 0;
+      analytics.behaviorStats.totalAnswersTracked = Number(rawAnalytics.behaviorStats.totalAnswersTracked) || 0;
+    }
+
+    if (rawAnalytics.scoreMoments && typeof rawAnalytics.scoreMoments === "object" && !Array.isArray(rawAnalytics.scoreMoments)) {
+      analytics.scoreMoments.count = Number(rawAnalytics.scoreMoments.count) || 0;
+      analytics.scoreMoments.mean = Number(rawAnalytics.scoreMoments.mean) || 0;
+      analytics.scoreMoments.m2 = Number(rawAnalytics.scoreMoments.m2) || 0;
+    }
+
+    if (rawAnalytics.trendRegression && typeof rawAnalytics.trendRegression === "object" && !Array.isArray(rawAnalytics.trendRegression)) {
+      analytics.trendRegression.count = Number(rawAnalytics.trendRegression.count) || 0;
+      analytics.trendRegression.sumX = Number(rawAnalytics.trendRegression.sumX) || 0;
+      analytics.trendRegression.sumY = Number(rawAnalytics.trendRegression.sumY) || 0;
+      analytics.trendRegression.sumXY = Number(rawAnalytics.trendRegression.sumXY) || 0;
+      analytics.trendRegression.sumX2 = Number(rawAnalytics.trendRegression.sumX2) || 0;
+    }
+
+    if (rawAnalytics.streakStats && typeof rawAnalytics.streakStats === "object" && !Array.isArray(rawAnalytics.streakStats)) {
+      analytics.streakStats.currentCorrectStreak = Number(rawAnalytics.streakStats.currentCorrectStreak) || 0;
+      analytics.streakStats.bestCorrectStreak = Number(rawAnalytics.streakStats.bestCorrectStreak) || 0;
+    }
+
+    if (rawAnalytics.dropoffStats && typeof rawAnalytics.dropoffStats === "object" && !Array.isArray(rawAnalytics.dropoffStats)) {
+      analytics.dropoffStats.sessionsTracked = Number(rawAnalytics.dropoffStats.sessionsTracked) || 0;
+      analytics.dropoffStats.totalDropoff = Number(rawAnalytics.dropoffStats.totalDropoff) || 0;
+    }
+
+    if (rawAnalytics.topicStats && typeof rawAnalytics.topicStats === "object" && !Array.isArray(rawAnalytics.topicStats)) {
+      analytics.topicStats.byFolder = normalizeTopicMap(rawAnalytics.topicStats.byFolder);
+      analytics.topicStats.byQuizKind = normalizeTopicMap(rawAnalytics.topicStats.byQuizKind);
+    }
+
+    seedAnalyticsFromHistory(analytics);
     return analytics;
   }
 
   function createDefaultLibraryModel() {
     const now = Date.now();
     return {
-      version: 3,
+      version: 4,
       rootFolderId: "root",
       folders: {
         root: {
@@ -1383,11 +1872,32 @@
       answeredAt,
       elapsedMs
     };
+    const isFastAnswer = elapsedMs < analytics.behaviorStats.thresholdMs;
+    const isSlowAnswer = elapsedMs > analytics.behaviorStats.thresholdMs;
 
     session.answers.push(attempt);
     analytics.totals.questionsAnswered += 1;
     if (isCorrect) {
       analytics.totals.correctAnswers += 1;
+    }
+    analytics.behaviorStats.totalAnswersTracked += 1;
+    if (!isCorrect && isFastAnswer) {
+      analytics.behaviorStats.guessWrongCount += 1;
+    }
+    if (!isCorrect && isSlowAnswer) {
+      analytics.behaviorStats.slowErrorCount += 1;
+    }
+    if (isCorrect && isFastAnswer) {
+      analytics.behaviorStats.fastCorrectCount += 1;
+    }
+    if (isCorrect) {
+      analytics.streakStats.currentCorrectStreak += 1;
+      analytics.streakStats.bestCorrectStreak = Math.max(
+        analytics.streakStats.bestCorrectStreak,
+        analytics.streakStats.currentCorrectStreak
+      );
+    } else {
+      analytics.streakStats.currentCorrectStreak = 0;
     }
     pushLimitedEntry(analytics.recentAnswers, attempt, MAX_RECENT_ANALYTIC_ANSWERS);
 
@@ -1406,10 +1916,19 @@
       wrongCount: 0,
       totalTimeMs: 0,
       averageTimeMs: 0,
+      questionAccuracy: null,
+      difficulty: null,
+      errorRate: null,
+      masteryScore: null,
+      firstAnsweredAt: answeredAt,
+      firstResult: isCorrect,
       lastAnsweredAt: 0,
-      lastResult: "wrong",
+      lastResult: false,
       lastSelectedOption: "",
-      correctOption: currentQuestion.options[currentQuestion.correctIndex]
+      correctOption: currentQuestion.options[currentQuestion.correctIndex],
+      fastWrongCount: 0,
+      slowWrongCount: 0,
+      fastCorrectCount: 0
     };
 
     questionStat.attempts += 1;
@@ -1420,11 +1939,28 @@
     }
     questionStat.totalTimeMs += elapsedMs;
     questionStat.averageTimeMs = Math.round(questionStat.totalTimeMs / questionStat.attempts);
+    questionStat.questionAccuracy = safeDivide(questionStat.correctCount, questionStat.attempts, null);
+    questionStat.difficulty = questionStat.attempts ? 1 - questionStat.questionAccuracy : null;
+    questionStat.errorRate = safeDivide(questionStat.wrongCount, questionStat.attempts, null);
+    questionStat.masteryScore = calculateQuestionMastery(questionStat.questionAccuracy, questionStat.averageTimeMs);
+    if (!questionStat.firstAnsweredAt || answeredAt < questionStat.firstAnsweredAt) {
+      questionStat.firstAnsweredAt = answeredAt;
+      questionStat.firstResult = isCorrect;
+    }
     questionStat.lastAnsweredAt = answeredAt;
-    questionStat.lastResult = isCorrect ? "correct" : "wrong";
+    questionStat.lastResult = isCorrect;
     questionStat.lastSelectedOption = currentQuestion.options[selectedIndex];
     questionStat.correctOption = currentQuestion.options[currentQuestion.correctIndex];
-    analytics.questionStats[questionKey] = questionStat;
+    if (!isCorrect && isFastAnswer) {
+      questionStat.fastWrongCount += 1;
+    }
+    if (!isCorrect && isSlowAnswer) {
+      questionStat.slowWrongCount += 1;
+    }
+    if (isCorrect && isFastAnswer) {
+      questionStat.fastCorrectCount += 1;
+    }
+    analytics.questionStats[questionKey] = decorateQuestionStat(questionStat);
 
     scheduleLibrarySave();
   }
@@ -1439,6 +1975,12 @@
     const session = quizState.activeSession;
     const completedAt = Date.now();
     const durationMs = Math.max(completedAt - session.startedAt, 0);
+    const previousSession = analytics.recentSessions
+      .slice()
+      .sort((left, right) => (Number(right.completedAt) || 0) - (Number(left.completedAt) || 0))[0];
+    const dropoff = calculateSessionDropoff(session.answers);
+    const scoreDelta = previousSession ? scorePercent - (Number(previousSession.scorePercent) || 0) : null;
+    const questionsPerMinute = safeDivide(session.questionCount, durationMs / 60000, null);
     const summary = {
       id: session.id,
       source: session.source,
@@ -1457,13 +1999,31 @@
       scorePercent,
       averageAnswerMs: session.answers.length
         ? Math.round(session.answers.reduce((sum, answer) => sum + (Number(answer.elapsedMs) || 0), 0) / session.answers.length)
-        : 0
+        : 0,
+      efficiency: safeDivide(scorePercent, durationMs, null),
+      questionsPerMinute,
+      scoreDelta,
+      firstHalfAccuracy: dropoff.firstHalfAccuracy,
+      secondHalfAccuracy: dropoff.secondHalfAccuracy,
+      dropoffRate: dropoff.dropoffRate
     };
 
     pushLimitedEntry(analytics.recentSessions, summary, MAX_RECENT_ANALYTIC_SESSIONS);
     analytics.totals.sessionsCompleted += 1;
     analytics.totals.totalTimeMs += durationMs;
     analytics.totals.totalScorePercent += scorePercent;
+    updateRunningMoments(analytics.scoreMoments, scorePercent);
+    updateRegressionTotals(analytics.trendRegression, completedAt, scorePercent);
+    if (Number.isFinite(dropoff.dropoffRate)) {
+      analytics.dropoffStats.sessionsTracked += 1;
+      analytics.dropoffStats.totalDropoff += dropoff.dropoffRate;
+    }
+
+    const dailyBucket = ensureDailyStatBucket(analytics, getLocalDateKey(completedAt));
+    dailyBucket.studyTimeMs += durationMs;
+    dailyBucket.sessionsCompleted += 1;
+    dailyBucket.questionsAnswered += session.questionCount;
+    dailyBucket.correctAnswers += quizState.score;
 
     const quizKey = buildQuizAnalyticsKey(session);
     const quizStat = analytics.quizStats[quizKey] || {
@@ -1481,6 +2041,16 @@
       totalScorePercent: 0,
       averageScorePercent: 0,
       bestScorePercent: 0,
+      firstCompletedAt: completedAt,
+      firstScorePercent: scorePercent,
+      quizAccuracy: null,
+      retentionChange: 0,
+      scoreMean: 0,
+      scoreM2: 0,
+      scoreVariance: 0,
+      scoreStdDev: 0,
+      consistencyScore: null,
+      timePerCorrectMs: null,
       lastCompletedAt: 0,
       lastScorePercent: 0
     };
@@ -1492,9 +2062,35 @@
     quizStat.totalScorePercent += scorePercent;
     quizStat.averageScorePercent = Math.round(quizStat.totalScorePercent / quizStat.attempts);
     quizStat.bestScorePercent = Math.max(quizStat.bestScorePercent, scorePercent);
+    if (!quizStat.firstCompletedAt || completedAt < quizStat.firstCompletedAt) {
+      quizStat.firstCompletedAt = completedAt;
+      quizStat.firstScorePercent = scorePercent;
+    }
+    const quizMoments = {
+      count: Math.max((Number(quizStat.attempts) || 1) - 1, 0),
+      mean: Number(quizStat.scoreMean) || 0,
+      m2: Number(quizStat.scoreM2) || 0
+    };
+    updateRunningMoments(quizMoments, scorePercent);
+    quizStat.quizAccuracy = safeDivide(quizStat.totalCorrect, quizStat.totalQuestions, null);
+    quizStat.retentionChange = scorePercent - (Number(quizStat.firstScorePercent) || 0);
+    quizStat.scoreMean = quizMoments.mean;
+    quizStat.scoreM2 = quizMoments.m2;
+    quizStat.scoreVariance = safeDivide(quizStat.scoreM2, quizMoments.count || quizStat.attempts || 0, 0);
+    quizStat.scoreStdDev = Math.sqrt(Math.max(quizStat.scoreVariance, 0));
+    quizStat.consistencyScore = getConsistencyFromStdDev(quizStat.scoreStdDev);
+    quizStat.timePerCorrectMs = safeDivide(quizStat.totalTimeMs, quizStat.totalCorrect, null);
     quizStat.lastCompletedAt = completedAt;
     quizStat.lastScorePercent = scorePercent;
-    analytics.quizStats[quizKey] = quizStat;
+    analytics.quizStats[quizKey] = decorateQuizStat(quizStat);
+
+    const folderKey = session.folderId || session.folderPath || session.folderName || "library";
+    updateTopicEntry(
+      ensureTopicEntry(analytics.topicStats.byFolder, folderKey, session.folderName || session.folderPath || "Library"),
+      scorePercent
+    );
+    const quizKindKey = session.quizKind || "quiz";
+    updateTopicEntry(ensureTopicEntry(analytics.topicStats.byQuizKind, quizKindKey, quizKindKey), scorePercent);
 
     scheduleLibrarySave();
     quizState.activeSession = null;
@@ -1709,6 +2305,36 @@
     );
   }
 
+  function createQuizActionMenu(quizId) {
+    const menu = createElement("div", "saved-action-menu");
+    menu.setAttribute("data-quiz-id", quizId);
+
+    const toggleButton = createActionButton({
+      label: "Actions",
+      action: "toggle-quiz-menu",
+      quizId,
+      className: "btn btn-secondary saved-item-btn saved-action-menu-toggle"
+    });
+    toggleButton.setAttribute("aria-expanded", "false");
+    toggleButton.setAttribute("aria-haspopup", "menu");
+
+    const menuPanel = createElement("div", "saved-action-menu-panel");
+    menuPanel.setAttribute("role", "menu");
+    appendChildren(menuPanel, [
+      createActionButton({ label: "Rename", action: "edit-quiz", quizId }),
+      createActionButton({ label: "Move", action: "edit-move-quiz", quizId }),
+      createActionButton({
+        label: "Delete",
+        action: "delete-quiz",
+        quizId,
+        className: "btn btn-secondary saved-item-btn saved-item-danger-btn"
+      })
+    ]);
+
+    appendChildren(menu, [toggleButton, menuPanel]);
+    return appendChildren(createElement("div", "saved-action-menu-wrap"), [menu]);
+  }
+
   // Renders the saved library tree for the currently open folder.
   function renderLibraryList() {
     elements.savedQuizList.innerHTML = "";
@@ -1766,24 +2392,19 @@
 
     quizzes.forEach((quiz) => {
       const item = createElement("li", "saved-item saved-item-quiz");
+      const actions = createElement("div", "saved-item-actions");
+      actions.appendChild(
+        createActionButton({
+          label: "Load",
+          action: "load-quiz",
+          quizId: quiz.id,
+          className: "btn btn-secondary saved-item-btn saved-item-main-btn"
+        })
+      );
+      actions.appendChild(createQuizActionMenu(quiz.id));
       appendChildren(item, [
         createSavedItemCopy(getQuizTypeLabel(quiz), quiz.name, getQuizMetaText(quiz)),
-        createSavedItemActions([
-          {
-            label: "Load",
-            action: "load-quiz",
-            quizId: quiz.id,
-            className: "btn btn-secondary saved-item-btn saved-item-main-btn"
-          },
-          { label: "Rename", action: "edit-quiz", quizId: quiz.id },
-          { label: "Move", action: "edit-move-quiz", quizId: quiz.id },
-          {
-            label: "Delete",
-            action: "delete-quiz",
-            quizId: quiz.id,
-            className: "btn btn-secondary saved-item-btn saved-item-danger-btn"
-          }
-        ])
+        actions
       ]);
       elements.savedQuizList.appendChild(item);
     });
@@ -1841,6 +2462,79 @@
 
   function formatPercent(value) {
     return `${Math.round(Number(value) || 0)}%`;
+  }
+
+  function formatRatioPercent(value, digits) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+      return "\u2014";
+    }
+    return `${roundTo(amount * 100, digits === undefined ? 0 : digits)}%`;
+  }
+
+  function formatDecimal(value, digits, suffix) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+      return "\u2014";
+    }
+    const precision = Number.isInteger(digits) ? digits : 2;
+    return `${roundTo(amount, precision)}${suffix || ""}`;
+  }
+
+  function formatSignedScoreChange(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+      return "\u2014";
+    }
+
+    const rounded = roundTo(amount, 0);
+    if (rounded > 0) {
+      return `+${rounded}%`;
+    }
+    if (rounded < 0) {
+      return `${rounded}%`;
+    }
+    return "0%";
+  }
+
+  function formatSignedRatioPercent(value, digits) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+      return "\u2014";
+    }
+
+    const rounded = roundTo(amount * 100, digits === undefined ? 0 : digits);
+    if (rounded > 0) {
+      return `+${rounded}%`;
+    }
+    if (rounded < 0) {
+      return `${rounded}%`;
+    }
+    return "0%";
+  }
+
+  function formatTrendSlope(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+      return "\u2014";
+    }
+
+    const pointsPerDay = amount * 86400000;
+    const rounded = roundTo(pointsPerDay, 1);
+    if (rounded > 0) {
+      return `+${rounded} pts/day`;
+    }
+    if (rounded < 0) {
+      return `${rounded} pts/day`;
+    }
+    return "0 pts/day";
+  }
+
+  function formatMetricText(value, formatter) {
+    if (value === null || value === undefined) {
+      return "\u2014";
+    }
+    return typeof formatter === "function" ? formatter(value) : String(value);
   }
 
   function createAnalyticsEmptyMessage(message) {
@@ -1931,9 +2625,60 @@
     return section;
   }
 
+  function buildRollingAverageSeries(sessions, windowSize) {
+    const sortedSessions = sessions
+      .slice()
+      .sort((left, right) => (Number(left.completedAt) || 0) - (Number(right.completedAt) || 0));
+
+    return sortedSessions.map((session, index) => {
+      const startIndex = Math.max(0, index - windowSize + 1);
+      const windowSessions = sortedSessions.slice(startIndex, index + 1);
+      const rollingAverage = safeDivide(
+        windowSessions.reduce((sum, item) => sum + (Number(item.scorePercent) || 0), 0),
+        windowSessions.length,
+        null
+      );
+      return {
+        ...session,
+        rollingAverage
+      };
+    });
+  }
+
+  function buildDailyMetrics(dailyStats) {
+    return Object.entries(dailyStats || {})
+      .map(([dateKey, value]) => ({
+        dateKey,
+        studyTimeMs: Number(value.studyTimeMs) || 0,
+        sessionsCompleted: Number(value.sessionsCompleted) || 0,
+        questionsAnswered: Number(value.questionsAnswered) || 0,
+        correctAnswers: Number(value.correctAnswers) || 0
+      }))
+      .sort((left, right) => right.dateKey.localeCompare(left.dateKey));
+  }
+
+  function buildTopicMetrics(topicMap) {
+    return Object.entries(topicMap || {})
+      .map(([key, value]) => ({
+        key,
+        label: value.label || key,
+        attempts: Number(value.attempts) || 0,
+        totalScorePercent: Number(value.totalScorePercent) || 0,
+        averageScorePercent: Number(value.averageScorePercent) || 0
+      }))
+      .sort((left, right) => {
+        const averageGap = (Number(right.averageScorePercent) || 0) - (Number(left.averageScorePercent) || 0);
+        if (averageGap !== 0) {
+          return averageGap;
+        }
+        return (Number(right.attempts) || 0) - (Number(left.attempts) || 0);
+      });
+  }
+
   // Produces sorted analytics collections that are ready to render into the dashboard.
   function getAnalyticsSnapshot() {
     const analytics = libraryRuntime.model.analytics || createDefaultAnalyticsModel();
+    const totals = analytics.totals || createDefaultAnalyticsModel().totals;
     const recentSessions = analytics.recentSessions
       .slice()
       .sort((left, right) => (Number(right.completedAt) || 0) - (Number(left.completedAt) || 0));
@@ -1942,6 +2687,7 @@
       .sort((left, right) => (Number(right.answeredAt) || 0) - (Number(left.answeredAt) || 0));
     const quizStats = Object.values(analytics.quizStats || {})
       .filter(Boolean)
+      .map((stat) => decorateQuizStat(stat))
       .sort(
         (left, right) =>
           (Number(right.lastCompletedAt) || 0) - (Number(left.lastCompletedAt) || 0) ||
@@ -1949,22 +2695,22 @@
       );
     const questionStats = Object.values(analytics.questionStats || {})
       .filter(Boolean)
+      .map((stat) => decorateQuestionStat(stat))
       .sort((left, right) => {
+        const rightDifficulty = Number(right.difficulty);
+        const leftDifficulty = Number(left.difficulty);
+        if (Number.isFinite(rightDifficulty) && Number.isFinite(leftDifficulty) && rightDifficulty !== leftDifficulty) {
+          return rightDifficulty - leftDifficulty;
+        }
+
         const rightWrong = Number(right.wrongCount) || 0;
         const leftWrong = Number(left.wrongCount) || 0;
         if (rightWrong !== leftWrong) {
           return rightWrong - leftWrong;
         }
 
-        const leftAccuracy = (Number(left.correctCount) || 0) / Math.max(Number(left.attempts) || 0, 1);
-        const rightAccuracy = (Number(right.correctCount) || 0) / Math.max(Number(right.attempts) || 0, 1);
-        if (leftAccuracy !== rightAccuracy) {
-          return leftAccuracy - rightAccuracy;
-        }
-
         return (Number(right.lastAnsweredAt) || 0) - (Number(left.lastAnsweredAt) || 0);
       });
-
     const libraryQuizzes = Object.values((libraryRuntime.model && libraryRuntime.model.quizzes) || {})
       .filter(Boolean)
       .sort((left, right) => left.name.localeCompare(right.name));
@@ -1975,19 +2721,20 @@
           return null;
         }
 
-        return {
+        return decorateQuizStat({
           ...stat,
           quizId: quiz.id,
           quizName: quiz.name,
           quizKind: quiz.kind || stat.quizKind || "quiz",
           folderId: quiz.parentFolderId
-        };
+        });
       })
       .filter(Boolean);
     const unattemptedQuizzes = libraryQuizzes.filter((quiz) => {
       const stat = analytics.quizStats[quiz.id];
       return !stat || (Number(stat.attempts) || 0) <= 0;
     });
+
     const topPerformers = attemptedLibraryQuizStats
       .slice()
       .sort((left, right) => {
@@ -1995,12 +2742,10 @@
         if (averageGap !== 0) {
           return averageGap;
         }
-
-        const bestGap = (Number(right.bestScorePercent) || 0) - (Number(left.bestScorePercent) || 0);
-        if (bestGap !== 0) {
-          return bestGap;
+        const accuracyGap = (Number(right.quizAccuracy) || 0) - (Number(left.quizAccuracy) || 0);
+        if (accuracyGap !== 0) {
+          return accuracyGap;
         }
-
         return (Number(right.lastCompletedAt) || 0) - (Number(left.lastCompletedAt) || 0);
       })
       .slice(0, 3);
@@ -2011,22 +2756,100 @@
         if (averageGap !== 0) {
           return averageGap;
         }
-
-        const bestGap = (Number(left.bestScorePercent) || 0) - (Number(right.bestScorePercent) || 0);
-        if (bestGap !== 0) {
-          return bestGap;
-        }
-
         return (Number(right.attempts) || 0) - (Number(left.attempts) || 0);
       })
       .slice(0, 3);
-    const mostIncorrectQuestions = questionStats.filter((stat) => (Number(stat.wrongCount) || 0) > 0).slice(0, 3);
+    const mostConsistentQuizzes = attemptedLibraryQuizStats
+      .slice()
+      .sort((left, right) => {
+        const consistencyGap = (Number(right.consistencyScore) || 0) - (Number(left.consistencyScore) || 0);
+        if (consistencyGap !== 0) {
+          return consistencyGap;
+        }
+        return (Number(right.averageScorePercent) || 0) - (Number(left.averageScorePercent) || 0);
+      })
+      .slice(0, 3);
+    const mostIncorrectQuestions = questionStats.filter((stat) => (Number(stat.wrongCount) || 0) > 0).slice(0, 4);
     const attemptedQuizCount = attemptedLibraryQuizStats.length;
     const passedQuizCount = attemptedLibraryQuizStats.filter((stat) => (Number(stat.bestScorePercent) || 0) >= 70).length;
     const needsWorkQuizCount = attemptedQuizCount - passedQuizCount;
+    const rollingSeries = buildRollingAverageSeries(recentSessions, ANALYTICS_ROLLING_WINDOW);
+    const trendSeries = rollingSeries.slice(-8);
+    const accuracy = safeDivide(totals.correctAnswers, totals.questionsAnswered, null);
+    const averageScore = safeDivide(totals.totalScorePercent, totals.sessionsCompleted, null);
+    const averageAnswerMs = safeDivide(totals.totalTimeMs, totals.questionsAnswered, null);
+    const questionsPerMinute = safeDivide(totals.questionsAnswered, (Number(totals.totalTimeMs) || 0) / 60000, null);
+    const timePerCorrectMs = safeDivide(totals.totalTimeMs, totals.correctAnswers, null);
+    const variance = getVarianceFromMoments(analytics.scoreMoments);
+    const stdDev = getStdDevFromMoments(analytics.scoreMoments);
+    const consistencyScore = getConsistencyFromStdDev(stdDev);
+    const behaviorStats = analytics.behaviorStats || createDefaultBehaviorStats();
+    const guessRate = safeDivide(behaviorStats.guessWrongCount, behaviorStats.totalAnswersTracked, null);
+    const slowErrorRate = safeDivide(behaviorStats.slowErrorCount, behaviorStats.totalAnswersTracked, null);
+    const fastCorrectRate = safeDivide(behaviorStats.fastCorrectCount, behaviorStats.totalAnswersTracked, null);
+    const dailyMetrics = buildDailyMetrics(analytics.dailyStats);
+    const daysTracked = dailyMetrics.length;
+    const avgStudyTimePerDay = daysTracked
+      ? safeDivide(
+          dailyMetrics.reduce((sum, day) => sum + day.studyTimeMs, 0),
+          daysTracked,
+          null
+        )
+      : null;
+    const avgSessionsPerDay = daysTracked
+      ? safeDivide(
+          dailyMetrics.reduce((sum, day) => sum + day.sessionsCompleted, 0),
+          daysTracked,
+          null
+        )
+      : null;
+    const topicMetrics = {
+      folders: buildTopicMetrics(analytics.topicStats.byFolder),
+      quizKinds: buildTopicMetrics(analytics.topicStats.byQuizKind)
+    };
+    const averageDropoff = safeDivide(
+      analytics.dropoffStats.totalDropoff,
+      analytics.dropoffStats.sessionsTracked,
+      null
+    );
 
     return {
-      totals: analytics.totals,
+      totals,
+      globalMetrics: {
+        accuracy,
+        averageScore,
+        averageAnswerMs,
+        questionsPerMinute,
+        timePerCorrectMs,
+        rollingAverageScore: trendSeries.length ? trendSeries[trendSeries.length - 1].rollingAverage : null,
+        improvementSlope: getRegressionSlope(analytics.trendRegression),
+        variance,
+        stdDev,
+        consistencyScore,
+        guessRate,
+        slowErrorRate,
+        fastCorrectRate,
+        currentStreak: Number(analytics.streakStats.currentCorrectStreak) || 0,
+        bestStreak: Number(analytics.streakStats.bestCorrectStreak) || 0
+      },
+      behaviorSummary: {
+        guessRate,
+        slowErrorRate,
+        fastCorrectRate,
+        thresholdMs: behaviorStats.thresholdMs,
+        currentStreak: Number(analytics.streakStats.currentCorrectStreak) || 0,
+        bestStreak: Number(analytics.streakStats.bestCorrectStreak) || 0,
+        averageDropoff
+      },
+      timeSummary: {
+        averageSessionDurationMs: safeDivide(totals.totalTimeMs, totals.sessionsCompleted, null),
+        averageStudyTimePerDayMs: avgStudyTimePerDay,
+        averageSessionsPerDay: avgSessionsPerDay,
+        daysTracked
+      },
+      dailyMetrics,
+      topicMetrics,
+      trendSeries,
       recentSessions,
       recentAnswers,
       quizStats,
@@ -2035,6 +2858,7 @@
       unattemptedQuizzes,
       topPerformers,
       leastPerformers,
+      mostConsistentQuizzes,
       mostIncorrectQuestions,
       attemptedQuizCount,
       passedQuizCount,
@@ -2047,13 +2871,16 @@
       elements.analyticsSessionList,
       sessions,
       "No completed quiz sessions yet.",
-      3,
+      4,
       (session) =>
         appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
           createAnalyticsRowCopy(
             session.quizName || "Untitled quiz",
-            `${session.correctCount || 0}/${session.questionCount || 0} correct`,
-            null
+            `${session.correctCount || 0}/${session.questionCount || 0} correct \u2022 ${formatDuration(session.durationMs)}`,
+            `Delta ${formatMetricText(session.scoreDelta, formatSignedScoreChange)} \u2022 ${formatMetricText(
+              session.questionsPerMinute,
+              (value) => formatDecimal(value, 1, " qpm")
+            )} \u2022 Drop-off ${formatMetricText(session.dropoffRate, formatSignedRatioPercent)}`
           ),
           createAnalyticsScoreChip(formatPercent(session.scorePercent))
         ])
@@ -2072,7 +2899,7 @@
       createAnalyticsPerformanceStat("70%+", String(snapshot.passedQuizCount), "Reached 70% or higher")
     );
     summaryGrid.appendChild(
-      createAnalyticsPerformanceStat("Needs 70%+", String(snapshot.needsWorkQuizCount), "Still below 70%")
+      createAnalyticsPerformanceStat("Needs Work", String(snapshot.needsWorkQuizCount), "Below your target band")
     );
     container.appendChild(summaryGrid);
 
@@ -2085,34 +2912,40 @@
         (stat) =>
           createAnalyticsMiniRow(
             stat.quizName || "Untitled quiz",
-            `Avg ${formatPercent(stat.averageScorePercent)} / Best ${formatPercent(stat.bestScorePercent)} / ${
-              stat.attempts || 0
-            } attempt${(stat.attempts || 0) === 1 ? "" : "s"}`,
+            `Avg ${formatPercent(stat.averageScorePercent)} \u2022 Accuracy ${formatRatioPercent(stat.quizAccuracy)} \u2022 Best ${formatPercent(stat.bestScorePercent)}`,
             formatPercent(stat.averageScorePercent)
           )
       )
     );
     groups.appendChild(
       createAnalyticsPerformanceGroup(
-        "Least Performing",
+        "Needs Attention",
         snapshot.leastPerformers,
         "No attempted quizzes yet.",
         (stat) =>
           createAnalyticsMiniRow(
             stat.quizName || "Untitled quiz",
-            `Avg ${formatPercent(stat.averageScorePercent)} / Best ${formatPercent(stat.bestScorePercent)} / ${
-              stat.attempts || 0
-            } attempt${(stat.attempts || 0) === 1 ? "" : "s"}`,
+            `Last ${formatPercent(stat.lastScorePercent)} \u2022 Retention ${formatSignedScoreChange(
+              stat.retentionChange
+            )} \u2022 ${stat.attempts || 0} attempt${(stat.attempts || 0) === 1 ? "" : "s"}`,
             formatPercent(stat.averageScorePercent)
           )
       )
     );
     groups.appendChild(
       createAnalyticsPerformanceGroup(
-        "Unattempted",
-        snapshot.unattemptedQuizzes.slice(0, 3),
-        "Every saved quiz has been attempted.",
-        (quiz) => createAnalyticsMiniRow(quiz.name || "Untitled quiz", "Not started yet", "New", "analytics-score-chip analytics-score-chip-muted")
+        "Most Consistent",
+        snapshot.mostConsistentQuizzes,
+        "Consistency builds as you complete more quizzes.",
+        (stat) =>
+          createAnalyticsMiniRow(
+            stat.quizName || "Untitled quiz",
+            `Consistency ${formatRatioPercent(stat.consistencyScore, 1)} \u2022 Std dev ${formatDecimal(
+              stat.scoreStdDev,
+              1
+            )}`,
+            formatRatioPercent(stat.consistencyScore, 1)
+          )
       )
     );
     container.appendChild(groups);
@@ -2122,23 +2955,19 @@
     renderCollection(
       elements.analyticsQuestionList,
       questionStats,
-      "Incorrect question trends will appear here.",
-      3,
-      (stat) => {
-        const attempts = Number(stat.attempts) || 0;
-        const correctCount = Number(stat.correctCount) || 0;
-        const wrongCount = Number(stat.wrongCount) || 0;
-        const accuracy = attempts ? Math.round((correctCount / attempts) * 100) : 0;
-
-        return appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
+      "Question-level trends will appear here.",
+      4,
+      (stat) =>
+        appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
           createAnalyticsRowCopy(
             stat.questionText || "Untitled question",
             stat.quizName || "Unknown quiz",
-            `Accuracy ${accuracy}%`
+            `Accuracy ${formatRatioPercent(stat.questionAccuracy)} \u2022 Difficulty ${formatRatioPercent(
+              stat.difficulty
+            )} \u2022 Avg ${formatDuration(stat.averageTimeMs)} \u2022 Mastery ${formatDecimal(stat.masteryScore, 2)}`
           ),
-          createAnalyticsScoreChip(`${wrongCount} wrong`)
-        ]);
-      }
+          createAnalyticsScoreChip(stat.lastResult ? "Last: Right" : "Last: Wrong")
+        ])
     );
   }
 
@@ -2147,16 +2976,16 @@
       elements.analyticsAnswerList,
       answers,
       "Recent answers will show up here.",
-      3,
+      4,
       (answer) => {
         const detailText = answer.isCorrect
-          ? "Correct answer chosen."
+          ? `Correct in ${formatDuration(answer.elapsedMs)}.`
           : `Picked "${answer.selectedOption || "Unknown"}". Correct: "${answer.correctOption || "Unknown"}".`;
 
         return appendChildren(createElement("article", "analytics-row analytics-row-answer analytics-row-compact"), [
           createAnalyticsRowCopy(
             answer.questionText || "Untitled question",
-            answer.quizName || "Unknown quiz",
+            `${answer.quizName || "Unknown quiz"} \u2022 ${formatTimestamp(answer.answeredAt)}`,
             detailText
           ),
           createAnalyticsAnswerBadge(answer.isCorrect)
@@ -2165,12 +2994,140 @@
     );
   }
 
-  function renderAnalyticsScoreGraph(sessions) {
+  function renderAnalyticsBehavior(snapshot) {
+    const container = elements.analyticsBehaviorList;
+    container.innerHTML = "";
+
+    const summaryGrid = createElement("div", "analytics-performance-stat-grid");
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat("Guess Rate", formatRatioPercent(snapshot.behaviorSummary.guessRate), "Fast wrong answers")
+    );
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat(
+        "Slow Errors",
+        formatRatioPercent(snapshot.behaviorSummary.slowErrorRate),
+        "Long wrong answers"
+      )
+    );
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat(
+        "Fast Correct",
+        formatRatioPercent(snapshot.behaviorSummary.fastCorrectRate),
+        "Quick correct answers"
+      )
+    );
+    container.appendChild(summaryGrid);
+
+    const list = createElement("div", "analytics-list analytics-list-compact");
+    list.appendChild(
+      createAnalyticsMiniRow(
+        "Current Streak",
+        `Best streak: ${snapshot.behaviorSummary.bestStreak}`,
+        String(snapshot.behaviorSummary.currentStreak)
+      )
+    );
+    list.appendChild(
+      createAnalyticsMiniRow(
+        "Average Drop-off",
+        "Accuracy change from first half to second half",
+        formatMetricText(snapshot.behaviorSummary.averageDropoff, formatSignedRatioPercent)
+      )
+    );
+    list.appendChild(
+      createAnalyticsMiniRow(
+        "Speed Threshold",
+        "Answers below this are treated as fast",
+        formatDuration(snapshot.behaviorSummary.thresholdMs)
+      )
+    );
+    container.appendChild(list);
+  }
+
+  function renderAnalyticsTime(snapshot) {
+    const container = elements.analyticsTimeList;
+    container.innerHTML = "";
+
+    const summaryGrid = createElement("div", "analytics-performance-stat-grid");
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat(
+        "Avg Session",
+        formatMetricText(snapshot.timeSummary.averageSessionDurationMs, formatDuration),
+        "Mean completed session length"
+      )
+    );
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat(
+        "Time / Correct",
+        formatMetricText(snapshot.globalMetrics.timePerCorrectMs, formatDuration),
+        "Study time per correct answer"
+      )
+    );
+    summaryGrid.appendChild(
+      createAnalyticsPerformanceStat(
+        "Sessions / Day",
+        formatMetricText(snapshot.timeSummary.averageSessionsPerDay, (value) => formatDecimal(value, 1)),
+        `${snapshot.timeSummary.daysTracked || 0} tracked day${snapshot.timeSummary.daysTracked === 1 ? "" : "s"}`
+      )
+    );
+    container.appendChild(summaryGrid);
+
+    const list = createElement("div", "analytics-list analytics-list-compact");
+    if (!snapshot.dailyMetrics.length) {
+      list.appendChild(createAnalyticsEmptyMessage("Daily study patterns will appear here."));
+    } else {
+      snapshot.dailyMetrics.slice(0, 4).forEach((day) => {
+        list.appendChild(
+          createAnalyticsMiniRow(
+            day.dateKey,
+            `${day.sessionsCompleted} session${day.sessionsCompleted === 1 ? "" : "s"} \u2022 ${day.questionsAnswered} answers`,
+            formatDuration(day.studyTimeMs)
+          )
+        );
+      });
+    }
+    container.appendChild(list);
+  }
+
+  function renderAnalyticsTopics(snapshot) {
+    const container = elements.analyticsTopicList;
+    container.innerHTML = "";
+
+    const groups = createElement("div", "analytics-performance-groups analytics-performance-groups-two");
+    groups.appendChild(
+      createAnalyticsPerformanceGroup(
+        "Folders",
+        snapshot.topicMetrics.folders.slice(0, 3),
+        "Topic strength appears after tracked sessions.",
+        (topic) =>
+          createAnalyticsMiniRow(
+            topic.label,
+            `${topic.attempts} attempt${topic.attempts === 1 ? "" : "s"}`,
+            formatPercent(topic.averageScorePercent)
+          )
+      )
+    );
+    groups.appendChild(
+      createAnalyticsPerformanceGroup(
+        "Quiz Types",
+        snapshot.topicMetrics.quizKinds.slice(0, 3),
+        "Quiz-type strength appears after tracked sessions.",
+        (topic) =>
+          createAnalyticsMiniRow(
+            topic.label,
+            `${topic.attempts} attempt${topic.attempts === 1 ? "" : "s"}`,
+            formatPercent(topic.averageScorePercent)
+          )
+      )
+    );
+    container.appendChild(groups);
+  }
+
+  function renderAnalyticsScoreGraph(trendSeries) {
     const container = elements.analyticsScoreGraph;
     container.innerHTML = "";
 
-    const chartSessions = sessions.slice(0, 8).reverse();
-    if (!chartSessions.length) {
+    const chartSeries = trendSeries.slice();
+    if (!chartSeries.length) {
       container.appendChild(createAnalyticsEmptyMessage("Complete quizzes to see your score trend."));
       return;
     }
@@ -2184,12 +3141,26 @@
     const innerWidth = width - paddingLeft - paddingRight;
     const innerHeight = height - paddingTop - paddingBottom;
     const baselineY = paddingTop + innerHeight;
-    const scores = chartSessions.map((session) => clamp(Number(session.scorePercent) || 0, 0, 100));
+    const scores = chartSeries.map((session) => clamp(Number(session.scorePercent) || 0, 0, 100));
+    const rollingScores = chartSeries.map((session) =>
+      Number.isFinite(Number(session.rollingAverage)) ? clamp(Number(session.rollingAverage), 0, 100) : null
+    );
     const points = scores.map((score, index) => {
       const x =
-        chartSessions.length === 1
+        chartSeries.length === 1
           ? paddingLeft + innerWidth / 2
-          : paddingLeft + (innerWidth * index) / (chartSessions.length - 1);
+          : paddingLeft + (innerWidth * index) / (chartSeries.length - 1);
+      const y = baselineY - (score / 100) * innerHeight;
+      return { x, y, score };
+    });
+    const rollingPoints = rollingScores.map((score, index) => {
+      if (!Number.isFinite(score)) {
+        return null;
+      }
+      const x =
+        chartSeries.length === 1
+          ? paddingLeft + innerWidth / 2
+          : paddingLeft + (innerWidth * index) / (chartSeries.length - 1);
       const y = baselineY - (score / 100) * innerHeight;
       return { x, y, score };
     });
@@ -2198,7 +3169,7 @@
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
     svg.setAttribute("class", "analytics-line-chart");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Line chart showing score trend over recent attempts");
+    svg.setAttribute("aria-label", "Line chart showing score trend and rolling average over recent attempts");
 
     [0, 50, 100].forEach((tick) => {
       const y = baselineY - (tick / 100) * innerHeight;
@@ -2232,6 +3203,17 @@
     polyline.setAttribute("class", "analytics-line-chart-line");
     svg.appendChild(polyline);
 
+    const rollingPolyline = createSvgElement("polyline");
+    rollingPolyline.setAttribute(
+      "points",
+      rollingPoints
+        .filter(Boolean)
+        .map((point) => `${point.x},${point.y}`)
+        .join(" ")
+    );
+    rollingPolyline.setAttribute("class", "analytics-line-chart-line analytics-line-chart-line-secondary");
+    svg.appendChild(rollingPolyline);
+
     points.forEach((point) => {
       const circle = createSvgElement("circle");
       circle.setAttribute("cx", String(point.x));
@@ -2241,7 +3223,7 @@
       svg.appendChild(circle);
     });
 
-    chartSessions.forEach((session, index) => {
+    chartSeries.forEach((session, index) => {
       const label = createSvgElement("text");
       label.setAttribute("x", String(points[index].x));
       label.setAttribute("y", String(height - 8));
@@ -2279,7 +3261,6 @@
       fill.style.width = `${(bar.value / maxValue) * 100}%`;
       track.appendChild(fill);
       row.appendChild(track);
-
       chart.appendChild(row);
     });
 
@@ -2297,29 +3278,47 @@
 
     elements.analyticsEmpty.hidden = hasAnalyticsData;
     elements.analyticsContent.hidden = !hasAnalyticsData;
-    elements.analyticsSummaryCopy.textContent = "Recent scores and trends.";
 
     if (!hasAnalyticsData) {
+      elements.analyticsSummaryCopy.textContent = "Recent scores and trends.";
       return;
     }
 
-    const totalSessions = Number(totals.sessionsCompleted) || 0;
-    const totalQuestions = Number(totals.questionsAnswered) || 0;
-    const totalCorrect = Number(totals.correctAnswers) || 0;
-    const averageScore = totalSessions ? Math.round((Number(totals.totalScorePercent) || 0) / totalSessions) : 0;
-    const correctRate = totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+    elements.analyticsSummaryCopy.textContent = `Local-only analytics across ${totals.sessionsCompleted || 0} session${
+      (totals.sessionsCompleted || 0) === 1 ? "" : "s"
+    }, with a best streak of ${snapshot.globalMetrics.bestStreak} and a trend of ${formatTrendSlope(
+      snapshot.globalMetrics.improvementSlope
+    )}.`;
 
-    elements.analyticsTotalSessions.textContent = String(totalSessions);
-    elements.analyticsAverageScore.textContent = formatPercent(averageScore);
-    elements.analyticsCorrectRate.textContent = formatPercent(correctRate);
-    elements.analyticsQuestionVolume.textContent = String(totalQuestions);
+    elements.analyticsTotalSessions.textContent = String(Number(totals.sessionsCompleted) || 0);
+    elements.analyticsAccuracy.textContent = formatMetricText(snapshot.globalMetrics.accuracy, formatRatioPercent);
+    elements.analyticsAverageScore.textContent = formatMetricText(snapshot.globalMetrics.averageScore, formatPercent);
+    elements.analyticsAverageAnswerTime.textContent = formatMetricText(
+      snapshot.globalMetrics.averageAnswerMs,
+      formatDuration
+    );
+    elements.analyticsQuestionsPerMinute.textContent = formatMetricText(
+      snapshot.globalMetrics.questionsPerMinute,
+      (value) => formatDecimal(value, 1)
+    );
     elements.analyticsStudyTime.textContent = formatDuration(totals.totalTimeMs);
+    elements.analyticsRollingAverage.textContent = formatMetricText(
+      snapshot.globalMetrics.rollingAverageScore,
+      formatPercent
+    );
+    elements.analyticsConsistency.textContent = formatMetricText(
+      snapshot.globalMetrics.consistencyScore,
+      (value) => formatRatioPercent(value, 1)
+    );
 
     renderAnalyticsSessions(snapshot.recentSessions);
     renderAnalyticsQuizzes(snapshot);
     renderAnalyticsQuestions(snapshot.mostIncorrectQuestions);
     renderAnalyticsAnswers(snapshot.recentAnswers);
-    renderAnalyticsScoreGraph(snapshot.recentSessions);
+    renderAnalyticsBehavior(snapshot);
+    renderAnalyticsTime(snapshot);
+    renderAnalyticsTopics(snapshot);
+    renderAnalyticsScoreGraph(snapshot.trendSeries);
     renderAnalyticsCoverageGraph(snapshot);
   }
 
@@ -2372,21 +3371,93 @@
     }
   }
 
+  function closeQuizActionMenus(activeQuizId) {
+    const activeId = typeof activeQuizId === "string" ? activeQuizId : null;
+    const menus = Array.from(elements.savedQuizList.querySelectorAll(".saved-action-menu"));
+    menus.forEach((menu) => {
+      const quizId = menu.getAttribute("data-quiz-id");
+      const shouldOpen = Boolean(activeId && quizId === activeId);
+      menu.classList.toggle("is-open", shouldOpen);
+
+      const toggleButton = menu.querySelector(".saved-action-menu-toggle");
+      if (toggleButton) {
+        toggleButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+      }
+    });
+  }
+
+  function positionPopupWithinViewport(triggerButton, popup) {
+    if (!triggerButton || !popup || !popup.classList.contains("is-open")) {
+      return;
+    }
+
+    popup.style.left = "";
+    popup.style.right = "0";
+    popup.style.top = "";
+
+    const triggerRect = triggerButton.getBoundingClientRect();
+    const popupRect = popup.getBoundingClientRect();
+    const parentRect = popup.offsetParent ? popup.offsetParent.getBoundingClientRect() : { left: 0, top: 0 };
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    const viewportPadding = 10;
+    const verticalGap = 8;
+
+    const preferredLeft = triggerRect.right - popupRect.width;
+    const clampedLeft = clamp(
+      preferredLeft,
+      viewportPadding,
+      Math.max(viewportPadding, viewportWidth - popupRect.width - viewportPadding)
+    );
+
+    let popupTop = triggerRect.bottom + verticalGap;
+    if (popupTop + popupRect.height > viewportHeight - viewportPadding) {
+      popupTop = Math.max(viewportPadding, triggerRect.top - popupRect.height - verticalGap);
+    }
+
+    popup.style.left = `${Math.round(clampedLeft - parentRect.left)}px`;
+    popup.style.right = "auto";
+    popup.style.top = `${Math.round(popupTop - parentRect.top)}px`;
+  }
+
+  function repositionOpenMiniPopups() {
+    positionPopupWithinViewport(elements.soundToggleBtn, elements.soundPopup);
+    positionPopupWithinViewport(elements.themeToggleBtn, elements.themePopup);
+  }
+
   function setSoundPopupOpen(isOpen) {
     const open = Boolean(isOpen);
     elements.soundPopup.classList.toggle("is-open", open);
     elements.soundToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      window.requestAnimationFrame(repositionOpenMiniPopups);
+    }
   }
 
   function setThemePopupOpen(isOpen) {
     const open = Boolean(isOpen);
     elements.themePopup.classList.toggle("is-open", open);
     elements.themeToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      window.requestAnimationFrame(repositionOpenMiniPopups);
+    }
   }
 
   function closeAllMiniPopups() {
+    closeQuizActionMenus();
     setSoundPopupOpen(false);
     setThemePopupOpen(false);
+  }
+
+  function goToMainMenu() {
+    closeAllMiniPopups();
+    closeLibraryEditor();
+    closeFolderDeleteModal();
+    closeQuizDeleteModal();
+    resetVictoryFeedback();
+    resetQuizState();
+    clearError();
+    showScreen("upload");
   }
 
   function openGuideScreen() {
@@ -2411,12 +3482,16 @@
     const clickedInsideSoundPopup = elements.soundPopup.contains(event.target);
     const clickedInsideThemeToggle = elements.themeToggleBtn.contains(event.target);
     const clickedInsideThemePopup = elements.themePopup.contains(event.target);
+    const clickedInsideQuizMenu = Boolean(event.target.closest(".saved-action-menu-wrap"));
 
     if (!clickedInsideSoundToggle && !clickedInsideSoundPopup) {
       setSoundPopupOpen(false);
     }
     if (!clickedInsideThemeToggle && !clickedInsideThemePopup) {
       setThemePopupOpen(false);
+    }
+    if (!clickedInsideQuizMenu) {
+      closeQuizActionMenus();
     }
   }
 
@@ -2589,6 +3664,15 @@
     const action = actionButton.getAttribute("data-action");
     const folderId = actionButton.getAttribute("data-folder-id");
     const quizId = actionButton.getAttribute("data-quiz-id");
+
+    if (action === "toggle-quiz-menu" && quizId) {
+      const parentMenu = actionButton.closest(".saved-action-menu");
+      const shouldOpen = !parentMenu || !parentMenu.classList.contains("is-open");
+      closeQuizActionMenus(shouldOpen ? quizId : null);
+      return;
+    }
+
+    closeQuizActionMenus();
 
     if (action === "open-folder" && folderId) {
       closeLibraryEditor();
@@ -2821,10 +3905,184 @@
     };
   }
 
+  function createTextImportEntry(fileName, relativePath, content) {
+    return createImportEntry(
+      {
+        name: fileName,
+        type: "application/json",
+        text: () => Promise.resolve(content)
+      },
+      relativePath
+    );
+  }
+
+  function isJsonImportEntry(entry) {
+    return entry.file && (entry.file.type === "application/json" || entry.file.name.toLowerCase().endsWith(".json"));
+  }
+
+  function isZipImportEntry(entry) {
+    return entry.file && (
+      entry.file.type === "application/zip" ||
+      entry.file.type === "application/x-zip-compressed" ||
+      entry.file.name.toLowerCase().endsWith(".zip")
+    );
+  }
+
   function getImportEntriesFromFileList(fileList) {
     return Array.from(fileList || [])
       .filter(Boolean)
       .map((file) => createImportEntry(file, file.webkitRelativePath || ""));
+  }
+
+  function getZipRootName(fileName) {
+    const normalizedName = normalizeEntityName(fileName || "Imported ZIP", "Imported ZIP");
+    const rootName = normalizedName.toLowerCase().endsWith(".zip") ? normalizedName.slice(0, -4) : normalizedName;
+    return rootName || "Imported ZIP";
+  }
+
+  function getUint16(bytes, offset) {
+    return bytes[offset] | (bytes[offset + 1] << 8);
+  }
+
+  function getUint32(bytes, offset) {
+    return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+  }
+
+  function findZipEndOfCentralDirectory(bytes) {
+    const minimumOffset = Math.max(0, bytes.length - 65557);
+    for (let offset = bytes.length - 22; offset >= minimumOffset; offset -= 1) {
+      if (getUint32(bytes, offset) === 0x06054b50) {
+        return offset;
+      }
+    }
+    return -1;
+  }
+
+  function decodeZipText(bytes) {
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+
+  async function inflateZipBytes(bytes) {
+    if (typeof DecompressionStream !== "function") {
+      throw new Error("This browser cannot unpack compressed ZIP files.");
+    }
+
+    const formats = ["deflate-raw", "deflate"];
+    let lastError = null;
+    for (const format of formats) {
+      try {
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream(format));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error("This ZIP file could not be decompressed.");
+  }
+
+  async function readZipEntryBytes(bytes, centralEntry) {
+    const localHeaderOffset = centralEntry.localHeaderOffset;
+    if (getUint32(bytes, localHeaderOffset) !== 0x04034b50) {
+      throw new Error("This ZIP file has an unreadable file header.");
+    }
+
+    const localNameLength = getUint16(bytes, localHeaderOffset + 26);
+    const localExtraLength = getUint16(bytes, localHeaderOffset + 28);
+    const dataOffset = localHeaderOffset + 30 + localNameLength + localExtraLength;
+    const compressedBytes = bytes.slice(dataOffset, dataOffset + centralEntry.compressedSize);
+
+    if (centralEntry.compressionMethod === 0) {
+      return compressedBytes;
+    }
+
+    if (centralEntry.compressionMethod === 8) {
+      return inflateZipBytes(compressedBytes);
+    }
+
+    throw new Error("Only stored and deflated ZIP files are supported.");
+  }
+
+  async function extractJsonEntriesFromZip(entry) {
+    const bytes = new Uint8Array(await entry.file.arrayBuffer());
+    const endOffset = findZipEndOfCentralDirectory(bytes);
+    if (endOffset < 0) {
+      throw new Error("This ZIP file could not be read.");
+    }
+
+    const entryCount = getUint16(bytes, endOffset + 10);
+    let centralOffset = getUint32(bytes, endOffset + 16);
+    const zipRootName = getZipRootName(entry.file.name);
+    const extractedEntries = [];
+
+    for (let index = 0; index < entryCount; index += 1) {
+      if (getUint32(bytes, centralOffset) !== 0x02014b50) {
+        throw new Error("This ZIP file has an unreadable directory.");
+      }
+
+      const flags = getUint16(bytes, centralOffset + 8);
+      const compressionMethod = getUint16(bytes, centralOffset + 10);
+      const compressedSize = getUint32(bytes, centralOffset + 20);
+      const nameLength = getUint16(bytes, centralOffset + 28);
+      const extraLength = getUint16(bytes, centralOffset + 30);
+      const commentLength = getUint16(bytes, centralOffset + 32);
+      const localHeaderOffset = getUint32(bytes, centralOffset + 42);
+      const nameBytes = bytes.slice(centralOffset + 46, centralOffset + 46 + nameLength);
+      const relativeName = decodeZipText(nameBytes).replace(/\\/g, "/");
+      centralOffset += 46 + nameLength + extraLength + commentLength;
+
+      if (!relativeName || relativeName.endsWith("/") || !relativeName.toLowerCase().endsWith(".json")) {
+        continue;
+      }
+
+      if (flags & 1) {
+        throw new Error("Encrypted ZIP files are not supported.");
+      }
+
+      const entryBytes = await readZipEntryBytes(bytes, {
+        compressionMethod,
+        compressedSize,
+        localHeaderOffset
+      });
+      const pathSegments = [zipRootName, ...relativeName.split("/")].filter(
+        (segment) => segment && segment !== "." && segment !== ".."
+      );
+      const fileName = pathSegments[pathSegments.length - 1] || "quiz.json";
+      extractedEntries.push(createTextImportEntry(fileName, pathSegments.join("/"), decodeZipText(entryBytes)));
+    }
+
+    return extractedEntries;
+  }
+
+  async function expandZipImportEntries(importEntries) {
+    const expandedEntries = [];
+    const zipErrors = [];
+
+    for (const entry of importEntries) {
+      if (!isZipImportEntry(entry)) {
+        expandedEntries.push(entry);
+        continue;
+      }
+
+      try {
+        const zipEntries = await extractJsonEntriesFromZip(entry);
+        if (zipEntries.length) {
+          expandedEntries.push(...zipEntries);
+        } else {
+          zipErrors.push({
+            fileName: entry.file.name,
+            message: "No JSON quiz files were found inside this ZIP."
+          });
+        }
+      } catch (error) {
+        zipErrors.push({
+          fileName: entry.file.name,
+          message: error && error.message ? error.message : "This ZIP file could not be imported."
+        });
+      }
+    }
+
+    return { expandedEntries, zipErrors };
   }
 
   // Reads dropped files and folders through Chromium's File System Access handles when available.
@@ -2974,27 +4232,32 @@
         : getImportEntriesFromFileList(fileList);
 
       if (!importEntries.length) {
-        showError("No files selected. Please choose at least one JSON file.");
+        showError("No files selected. Please choose at least one JSON or ZIP file.");
         return;
       }
 
-      const jsonEntries = importEntries.filter(
-        (entry) => entry.file && (entry.file.type === "application/json" || entry.file.name.toLowerCase().endsWith(".json"))
-      );
+      const { expandedEntries, zipErrors } = await expandZipImportEntries(importEntries);
+      const jsonEntries = expandedEntries.filter(isJsonImportEntry);
 
       if (!jsonEntries.length) {
+        const firstZipError = zipErrors[0];
+        if (firstZipError) {
+          showError(`Could not import "${firstZipError.fileName}". ${firstZipError.message}`);
+          return;
+        }
+
         showError("No JSON quizzes were found in that selection.");
         return;
       }
 
       const currentFolder = getCurrentFolder();
       let importedCount = 0;
-      const unsupportedCount = importEntries.length - jsonEntries.length;
-      let invalidCount = 0;
+      const unsupportedCount = expandedEntries.length - jsonEntries.length;
+      let invalidCount = zipErrors.length;
       let firstImportedQuestions = null;
       let firstImportedQuiz = null;
       let firstImportedFolderId = currentFolder.id;
-      const importErrors = [];
+      const importErrors = [...zipErrors];
 
       for (const entry of jsonEntries) {
         try {
@@ -3257,11 +4520,9 @@
     });
 
     elements.restartBtn.addEventListener("click", function () {
-      resetVictoryFeedback();
-      resetQuizState();
-      clearError();
-      showScreen("upload");
+      goToMainMenu();
     });
+    elements.appHomeBtn.addEventListener("click", goToMainMenu);
 
     elements.overviewFolderBtn.addEventListener("click", createOverviewForCurrentFolder);
     elements.analyticsOpenBtn.addEventListener("click", openAnalyticsScreen);
@@ -3344,6 +4605,8 @@
     });
 
     document.addEventListener("click", handleGlobalPopupClose);
+    window.addEventListener("resize", repositionOpenMiniPopups);
+    window.addEventListener("scroll", repositionOpenMiniPopups, { passive: true });
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape") {
         closeAllMiniPopups();
