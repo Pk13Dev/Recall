@@ -311,7 +311,7 @@ body.theme-vibrant .app-shell::before {
   position: absolute;
   top: calc(100% + 0.42rem);
   right: 0;
-  width: 180px;
+  width: 210px;
   max-width: min(220px, calc(100vw - 20px));
   padding: 0.55rem 0.6rem;
   border-radius: 10px;
@@ -342,6 +342,13 @@ body.theme-vibrant .app-shell::before {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--muted);
+}
+
+.popup-helper-text {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
 }
 
 .theme-options {

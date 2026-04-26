@@ -85,6 +85,35 @@
             />
           </div>
         </div>
+        <div class="sound-control">
+          <button
+            id="goal-toggle-btn"
+            class="sound-toggle-btn"
+            type="button"
+            aria-expanded="false"
+            aria-controls="goal-popup"
+            aria-label="Adjust score goal"
+          >
+            Goal
+          </button>
+          <div id="goal-popup" class="sound-popup" role="dialog" aria-label="Score goal">
+            <div class="sound-popup-header">
+              <span class="sound-popup-title">Goal</span>
+              <span id="goal-value" class="volume-value">70%</span>
+            </div>
+            <input
+              id="goal-control"
+              class="volume-control volume-control-mini"
+              type="range"
+              min="0"
+              max="100"
+              value="70"
+              step="1"
+              aria-label="Score goal percentage"
+            />
+            <p class="popup-helper-text">Used for result sounds and goal-based analytics.</p>
+          </div>
+        </div>
       </div>
       <p class="eyebrow">Study Better</p>
       <h1>

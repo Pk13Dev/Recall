@@ -29,6 +29,10 @@
     soundPopup: document.getElementById("sound-popup"),
     volumeControl: document.getElementById("volume-control"),
     volumeValue: document.getElementById("volume-value"),
+    goalToggleBtn: document.getElementById("goal-toggle-btn"),
+    goalPopup: document.getElementById("goal-popup"),
+    goalControl: document.getElementById("goal-control"),
+    goalValue: document.getElementById("goal-value"),
     libraryNote: document.getElementById("library-note"),
     libraryBreadcrumb: document.getElementById("library-breadcrumb"),
     libraryEditor: document.getElementById("library-editor"),
@@ -116,6 +120,7 @@
   };
 
   const DEFAULT_VOLUME = 0.75;
+  const DEFAULT_GOAL_PERCENT = 70;
   const DEFAULT_THEME = "light";
   const DISPLAY_OPTION_COUNT = 4;
   const MAX_QUESTIONS_PER_ATTEMPT = 20;
@@ -172,20 +177,38 @@
     resultEffectTimer: null
   };
 
-  const sounds = {
-    win: new Audio("./BaDing!.mp3"),
-    fail: new Audio("./DaDoo!.mp3"),
-    victory: new Audio("./Victory.mp3"),
-    loser: new Audio("./Loser.mp3")
+  const audioRuntime = {
+    isPrimed: false
   };
 
-  Object.values(sounds).forEach((audio) => {
-    audio.preload = "auto";
-    audio.volume = DEFAULT_VOLUME;
-  });
+  const SOUND_SOURCES = {
+    win: "./BaDing!.mp3",
+    fail: "./DaDoo!.mp3",
+    victory: "./Victory.mp3",
+    loser: "./Loser.mp3"
+  };
+
+  const sounds = Object.fromEntries(
+    Object.entries(SOUND_SOURCES).map(([type, source]) => [type, createSoundInstance(source)])
+  );
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
+  }
+
+  function normalizeGoalPercent(value) {
+    const goal = Math.round(Number(value));
+    if (!Number.isFinite(goal)) {
+      return DEFAULT_GOAL_PERCENT;
+    }
+    return clamp(goal, 0, 100);
+  }
+
+  function getGoalPercent() {
+    if (!libraryRuntime.model || !libraryRuntime.model.settings) {
+      return DEFAULT_GOAL_PERCENT;
+    }
+    return normalizeGoalPercent(libraryRuntime.model.settings.goalPercent);
   }
 
   function safeDivide(numerator, denominator, fallback) {
@@ -341,13 +364,125 @@
     return parent;
   }
 
-  function playSound(type) {
-    const sound = sounds[type];
-    if (!sound) {
+  function createSoundInstance(source) {
+    const audio = new Audio(source);
+    audio.preload = "auto";
+    audio.volume = DEFAULT_VOLUME;
+    audio.playsInline = true;
+    return audio;
+  }
+
+  function resetSoundPlayback(audio) {
+    if (!audio) {
       return;
     }
-    sound.currentTime = 0;
-    sound.play().catch(() => {});
+    try {
+      audio.pause();
+    } catch (error) {}
+    try {
+      audio.currentTime = 0;
+    } catch (error) {}
+  }
+
+  function recreateSound(type) {
+    const source = SOUND_SOURCES[type];
+    if (!source) {
+      return null;
+    }
+    const replacement = createSoundInstance(source);
+    replacement.volume = clamp(Number(elements.volumeControl.value) || DEFAULT_VOLUME * 100, 0, 100) / 100;
+    sounds[type] = replacement;
+    return replacement;
+  }
+
+  function primeAudioPlayback() {
+    if (audioRuntime.isPrimed) {
+      return;
+    }
+    audioRuntime.isPrimed = true;
+
+    Object.values(sounds).forEach((audio) => {
+      if (!audio) {
+        return;
+      }
+
+      audio.load();
+      const wasMuted = audio.muted;
+      audio.muted = true;
+      resetSoundPlayback(audio);
+
+      try {
+        const playPromise = audio.play();
+        if (playPromise && typeof playPromise.then === "function") {
+          playPromise
+            .then(() => {
+              resetSoundPlayback(audio);
+              audio.muted = wasMuted;
+            })
+            .catch(() => {
+              audio.muted = wasMuted;
+            });
+          return;
+        }
+      } catch (error) {}
+
+      audio.muted = wasMuted;
+    });
+  }
+
+  function playSoundWithRecovery(type, fallbackType) {
+    primeAudioPlayback();
+
+    function attemptPlay(audio, onFailure) {
+      if (!audio) {
+        if (typeof onFailure === "function") {
+          onFailure();
+        }
+        return;
+      }
+
+      resetSoundPlayback(audio);
+
+      try {
+        const playPromise = audio.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {
+            if (typeof onFailure === "function") {
+              onFailure();
+            }
+          });
+        }
+      } catch (error) {
+        if (typeof onFailure === "function") {
+          onFailure();
+        }
+      }
+    }
+
+    function playFallback() {
+      if (!fallbackType || fallbackType === type) {
+        return;
+      }
+      attemptPlay(sounds[fallbackType] || recreateSound(fallbackType));
+    }
+
+    let retriedWithFreshAudio = false;
+    const sound = sounds[type] || recreateSound(type);
+    attemptPlay(sound, function () {
+      if (!retriedWithFreshAudio) {
+        retriedWithFreshAudio = true;
+        attemptPlay(recreateSound(type), playFallback);
+        return;
+      }
+      playFallback();
+    });
+  }
+
+  function playSound(type) {
+    if (!type) {
+      return;
+    }
+    playSoundWithRecovery(type);
   }
 
   function triggerFireworks(targetButton) {
@@ -594,6 +729,7 @@
       return;
     }
 
+    primeAudioPlayback();
     resetVictoryFeedback();
 
     let hasTriggeredConfetti = false;
@@ -607,7 +743,7 @@
       victorySound.onended = null;
     };
 
-    victorySound.currentTime = 0;
+    resetSoundPlayback(victorySound);
     victorySound.onended = launchConfetti;
     victorySound.play().catch(() => {
       launchConfetti();
@@ -651,14 +787,7 @@
   function playLossEffect() {
     resetVictoryFeedback();
     triggerLossEffect();
-
-    const loserSound = sounds.loser;
-    if (!loserSound) {
-      return;
-    }
-
-    loserSound.currentTime = 0;
-    loserSound.play().catch(() => {});
+    playSoundWithRecovery("loser", "fail");
   }
 
   // Normalizes and validates a single question record from uploaded JSON.
@@ -1279,7 +1408,7 @@
       },
       quizzes: {},
       counters: { folder: 0, quiz: 0 },
-      settings: { volume: DEFAULT_VOLUME, theme: DEFAULT_THEME },
+      settings: { volume: DEFAULT_VOLUME, theme: DEFAULT_THEME, goalPercent: DEFAULT_GOAL_PERCENT },
       flags: { legacyImported: false },
       analytics: createDefaultAnalyticsModel()
     };
@@ -1301,6 +1430,8 @@
       if (typeof rawModel.settings.theme === "string" && isValidTheme(rawModel.settings.theme)) {
         model.settings.theme = rawModel.settings.theme;
       }
+
+      model.settings.goalPercent = normalizeGoalPercent(rawModel.settings.goalPercent);
     }
 
     if (rawModel.flags && typeof rawModel.flags === "object") {
@@ -2771,7 +2902,8 @@
       .slice(0, 3);
     const mostIncorrectQuestions = questionStats.filter((stat) => (Number(stat.wrongCount) || 0) > 0).slice(0, 4);
     const attemptedQuizCount = attemptedLibraryQuizStats.length;
-    const passedQuizCount = attemptedLibraryQuizStats.filter((stat) => (Number(stat.bestScorePercent) || 0) >= 70).length;
+    const goalPercent = getGoalPercent();
+    const passedQuizCount = attemptedLibraryQuizStats.filter((stat) => (Number(stat.bestScorePercent) || 0) >= goalPercent).length;
     const needsWorkQuizCount = attemptedQuizCount - passedQuizCount;
     const rollingSeries = buildRollingAverageSeries(recentSessions, ANALYTICS_ROLLING_WINDOW);
     const trendSeries = rollingSeries.slice(-8);
@@ -2861,6 +2993,7 @@
       mostConsistentQuizzes,
       mostIncorrectQuestions,
       attemptedQuizCount,
+      goalPercent,
       passedQuizCount,
       needsWorkQuizCount
     };
@@ -2896,7 +3029,7 @@
       createAnalyticsPerformanceStat("Attempted", String(snapshot.attemptedQuizCount), "Completed at least once")
     );
     summaryGrid.appendChild(
-      createAnalyticsPerformanceStat("70%+", String(snapshot.passedQuizCount), "Reached 70% or higher")
+      createAnalyticsPerformanceStat(`${snapshot.goalPercent}%+`, String(snapshot.passedQuizCount), `Reached ${snapshot.goalPercent}% or higher`)
     );
     summaryGrid.appendChild(
       createAnalyticsPerformanceStat("Needs Work", String(snapshot.needsWorkQuizCount), "Below your target band")
@@ -3242,8 +3375,8 @@
 
     const bars = [
       { label: "Attempted", value: snapshot.attemptedQuizCount, tone: "default" },
-      { label: "70%+", value: snapshot.passedQuizCount, tone: "success" },
-      { label: "Below 70%", value: snapshot.needsWorkQuizCount, tone: "danger" },
+      { label: `${snapshot.goalPercent}%+`, value: snapshot.passedQuizCount, tone: "success" },
+      { label: `Below ${snapshot.goalPercent}%`, value: snapshot.needsWorkQuizCount, tone: "danger" },
       { label: "Unattempted", value: snapshot.unattemptedQuizzes.length, tone: "muted" }
     ];
     const maxValue = Math.max(...bars.map((bar) => bar.value), 1);
@@ -3371,6 +3504,27 @@
     }
   }
 
+  function setGoalPercent(goalPercent, shouldPersist) {
+    const nextGoal = normalizeGoalPercent(goalPercent);
+    elements.goalControl.value = String(nextGoal);
+    elements.goalValue.textContent = `${nextGoal}%`;
+
+    if (libraryRuntime.model) {
+      libraryRuntime.model.settings.goalPercent = nextGoal;
+      if (shouldPersist) {
+        scheduleLibrarySave();
+      }
+    }
+
+    if (screens.results.classList.contains("is-active") && quizState.questions.length) {
+      elements.correctCount.textContent = `Total correct answers: ${quizState.score} | Goal: ${nextGoal}%`;
+    }
+
+    if (screens.analytics.classList.contains("is-active")) {
+      renderAnalyticsScreen();
+    }
+  }
+
   function closeQuizActionMenus(activeQuizId) {
     const activeId = typeof activeQuizId === "string" ? activeQuizId : null;
     const menus = Array.from(elements.savedQuizList.querySelectorAll(".saved-action-menu"));
@@ -3423,6 +3577,7 @@
   function repositionOpenMiniPopups() {
     positionPopupWithinViewport(elements.soundToggleBtn, elements.soundPopup);
     positionPopupWithinViewport(elements.themeToggleBtn, elements.themePopup);
+    positionPopupWithinViewport(elements.goalToggleBtn, elements.goalPopup);
   }
 
   function setSoundPopupOpen(isOpen) {
@@ -3443,10 +3598,20 @@
     }
   }
 
+  function setGoalPopupOpen(isOpen) {
+    const open = Boolean(isOpen);
+    elements.goalPopup.classList.toggle("is-open", open);
+    elements.goalToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      window.requestAnimationFrame(repositionOpenMiniPopups);
+    }
+  }
+
   function closeAllMiniPopups() {
     closeQuizActionMenus();
     setSoundPopupOpen(false);
     setThemePopupOpen(false);
+    setGoalPopupOpen(false);
   }
 
   function goToMainMenu() {
@@ -3482,6 +3647,8 @@
     const clickedInsideSoundPopup = elements.soundPopup.contains(event.target);
     const clickedInsideThemeToggle = elements.themeToggleBtn.contains(event.target);
     const clickedInsideThemePopup = elements.themePopup.contains(event.target);
+    const clickedInsideGoalToggle = elements.goalToggleBtn.contains(event.target);
+    const clickedInsideGoalPopup = elements.goalPopup.contains(event.target);
     const clickedInsideQuizMenu = Boolean(event.target.closest(".saved-action-menu-wrap"));
 
     if (!clickedInsideSoundToggle && !clickedInsideSoundPopup) {
@@ -3489,6 +3656,9 @@
     }
     if (!clickedInsideThemeToggle && !clickedInsideThemePopup) {
       setThemePopupOpen(false);
+    }
+    if (!clickedInsideGoalToggle && !clickedInsideGoalPopup) {
+      setGoalPopupOpen(false);
     }
     if (!clickedInsideQuizMenu) {
       closeQuizActionMenus();
@@ -3811,19 +3981,19 @@
 
     quizState.currentQuestionIndex += 1;
     if (quizState.currentQuestionIndex >= quizState.questions.length) {
-      const scoreRatio = quizState.questions.length ? quizState.score / quizState.questions.length : 0;
-      const scorePercent = Math.round(scoreRatio * 100);
+      const scorePercent = Math.round(
+        (quizState.questions.length ? quizState.score / quizState.questions.length : 0) * 100
+      );
+      const goalPercent = getGoalPercent();
       completeAnalyticsSession(scorePercent);
       elements.finalScore.textContent = `You scored ${quizState.score} out of ${quizState.questions.length}`;
       elements.scorePercent.textContent = `Percentage: ${scorePercent}%`;
-      elements.correctCount.textContent = `Total correct answers: ${quizState.score}`;
+      elements.correctCount.textContent = `Total correct answers: ${quizState.score} | Goal: ${goalPercent}%`;
       showScreen("results");
-      if (scoreRatio > 0.7) {
+      if (scorePercent >= goalPercent) {
         playVictoryCelebration();
-      } else if (scoreRatio < 0.7) {
-        playLossEffect();
       } else {
-        resetVictoryFeedback();
+        playLossEffect();
       }
       return;
     }
@@ -4379,6 +4549,7 @@
 
     setTheme(libraryRuntime.model.settings.theme, false);
     setNotificationVolume(libraryRuntime.model.settings.volume, false);
+    setGoalPercent(libraryRuntime.model.settings.goalPercent, false);
     updateLibraryNote();
     refreshLibraryUI();
   }
@@ -4572,11 +4743,17 @@
       setNotificationVolume(percent / 100, true);
     });
 
+    elements.goalControl.addEventListener("input", function () {
+      const percent = normalizeGoalPercent(elements.goalControl.value);
+      setGoalPercent(percent, true);
+    });
+
     elements.themeToggleBtn.addEventListener("click", function () {
       const isOpen = elements.themePopup.classList.contains("is-open");
       setThemePopupOpen(!isOpen);
       if (!isOpen) {
         setSoundPopupOpen(false);
+        setGoalPopupOpen(false);
       }
     });
 
@@ -4601,6 +4778,16 @@
       setSoundPopupOpen(!isOpen);
       if (!isOpen) {
         setThemePopupOpen(false);
+        setGoalPopupOpen(false);
+      }
+    });
+
+    elements.goalToggleBtn.addEventListener("click", function () {
+      const isOpen = elements.goalPopup.classList.contains("is-open");
+      setGoalPopupOpen(!isOpen);
+      if (!isOpen) {
+        setSoundPopupOpen(false);
+        setThemePopupOpen(false);
       }
     });
 
@@ -4616,13 +4803,28 @@
     });
   }
 
+  function initializeAudioUnlockEvents() {
+    const unlockAudio = function () {
+      primeAudioPlayback();
+      document.removeEventListener("pointerdown", unlockAudio, true);
+      document.removeEventListener("touchstart", unlockAudio, true);
+      document.removeEventListener("keydown", unlockAudio, true);
+    };
+
+    document.addEventListener("pointerdown", unlockAudio, { capture: true, passive: true });
+    document.addEventListener("touchstart", unlockAudio, { capture: true, passive: true });
+    document.addEventListener("keydown", unlockAudio, true);
+  }
+
   async function initializeApp() {
+    initializeAudioUnlockEvents();
     initializeUploadEvents();
     initializeActionEvents();
     showScreen("upload");
     setTheme(DEFAULT_THEME, false);
     closeAllMiniPopups();
     setNotificationVolume(DEFAULT_VOLUME, false);
+    setGoalPercent(DEFAULT_GOAL_PERCENT, false);
     await initializeLibraryStorage();
   }
 
