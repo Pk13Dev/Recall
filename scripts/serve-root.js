@@ -23,6 +23,7 @@ const mimeTypes = new Map([
   [".json", "application/json; charset=utf-8"],
   [".mp3", "audio/mpeg"],
   [".png", "image/png"],
+  [".woff2", "font/woff2"],
   [".svg", "image/svg+xml; charset=utf-8"]
 ]);
 
@@ -31,8 +32,8 @@ const securityHeaders = {
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self'",
-    "style-src 'self' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
+    "style-src 'self'",
+    "font-src 'self' data:",
     "img-src 'self' data:",
     "media-src 'self'",
     "connect-src 'self'",

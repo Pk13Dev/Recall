@@ -2,12 +2,16 @@ import { DEFAULT_VOLUME } from "../core/constants.js";
 import { elements } from "../core/dom.js";
 import { audioRuntime } from "../core/state.js";
 import { clamp } from "../core/utils.js";
+import winSoundUrl from "../../BaDing!.mp3";
+import failSoundUrl from "../../DaDoo!.mp3";
+import victorySoundUrl from "../../Victory.mp3";
+import loserSoundUrl from "../../Loser.mp3";
 
 export const SOUND_SOURCES = {
-  win: "./BaDing!.mp3",
-  fail: "./DaDoo!.mp3",
-  victory: "./Victory.mp3",
-  loser: "./Loser.mp3"
+  win: winSoundUrl,
+  fail: failSoundUrl,
+  victory: victorySoundUrl,
+  loser: loserSoundUrl
 };
 
 export const sounds = Object.fromEntries(
