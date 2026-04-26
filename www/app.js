@@ -342,9 +342,13 @@
     };
   }
 
-  function prepareQuizQuestionsForAttempt(questions) {
+  function prepareQuizQuestionsForAttempt(questions, questionLimit) {
+    const maxQuestions = Number.isInteger(questionLimit) && questionLimit > 0
+      ? questionLimit
+      : MAX_QUESTIONS_PER_ATTEMPT;
+
     return shuffleList(cloneQuestions(questions))
-      .slice(0, MAX_QUESTIONS_PER_ATTEMPT)
+      .slice(0, maxQuestions)
       .map(selectQuestionOptionsForAttempt);
   }
 
@@ -2452,6 +2456,7 @@
     const menuPanel = createElement("div", "saved-action-menu-panel");
     menuPanel.setAttribute("role", "menu");
     appendChildren(menuPanel, [
+      createActionButton({ label: "Quickie", action: "quickie-quiz", quizId }),
       createActionButton({ label: "Rename", action: "edit-quiz", quizId }),
       createActionButton({ label: "Move", action: "edit-move-quiz", quizId }),
       createActionButton({
@@ -3705,6 +3710,22 @@
     startQuiz(quiz.questions, getLaunchContextForQuiz(quiz));
   }
 
+  function startQuickieQuizById(quizId) {
+    clearError();
+    closeLibraryEditor();
+    const quiz = getQuiz(quizId);
+    if (!quiz) {
+      showError("This quiz no longer exists.");
+      return;
+    }
+
+    startQuiz(quiz.questions, {
+      ...getLaunchContextForQuiz(quiz),
+      questionLimit: 3,
+      quizKind: "quickie"
+    });
+  }
+
   // Handles create, rename, and move actions from the inline library editor.
   function saveLibraryEditor() {
     clearError();
@@ -3872,6 +3893,11 @@
       return;
     }
 
+    if (action === "quickie-quiz" && quizId) {
+      startQuickieQuizById(quizId);
+      return;
+    }
+
     if (action === "edit-quiz" && quizId) {
       openLibraryEditor("rename-quiz", quizId);
       return;
@@ -3955,7 +3981,7 @@
 
   function startQuiz(questions, launchConfig) {
     resetVictoryFeedback();
-    const attemptQuestions = prepareQuizQuestionsForAttempt(questions);
+    const attemptQuestions = prepareQuizQuestionsForAttempt(questions, launchConfig && launchConfig.questionLimit);
     quizState.questions = attemptQuestions;
     quizState.currentQuestionIndex = 0;
     quizState.selectedIndex = null;

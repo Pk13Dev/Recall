@@ -51,9 +51,14 @@ Important files include:
 
 ### 2. Open the app
 
-Open `index.html` in your browser.
+Open `index.html` directly for the offline app, or run the local HTTPS server and open the printed URL:
 
-There is no install step and no server is required.
+```powershell
+npm run cert
+npm start
+```
+
+The server binds to `127.0.0.1` only and uses a self-signed localhost certificate generated on your machine.
 
 ### 3. Add quizzes
 
@@ -220,7 +225,7 @@ This tracking is used only inside the local app and is not sent to an external s
 
 RECALL is designed to work offline once the files are on your machine.
 
-If you open `index.html` locally in a modern browser, the app can:
+If you open `index.html` directly or run the local server with `npm start`, the app can:
 
 - read quiz files
 - store your library locally
@@ -234,6 +239,9 @@ RECALL/
 |- index.html
 |- styles.css
 |- app.js
+|- scripts/
+|  |- create-local-cert.js
+|  `- serve-root.js
 |- README.md
 |- sample-quiz.json
 |- win.mp3
@@ -248,7 +256,7 @@ To share RECALL:
 
 - send the full project folder
 - keep all files together
-- tell them to open `index.html`
+- tell them to open `index.html`, or run `npm run cert` and `npm start` for the local HTTPS server
 - tell them to prepare quiz files in the supported JSON format
 
 Their saved library and analytics will stay local to their own browser on their own machine.

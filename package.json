@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "cert": "node scripts/create-local-cert.js",
+    "start": "node scripts/serve-root.js --https",
+    "serve": "node scripts/serve-root.js --https --no-open",
+    "start:http": "node scripts/serve-root.js",
+    "serve:http": "node scripts/serve-root.js --no-open"
+  },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
     "@capacitor/cli": "^8.3.1",
