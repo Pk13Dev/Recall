@@ -3,7 +3,7 @@
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url("./fonts/plus-jakarta-sans-latin-ext.woff2") format("woff2");
+  src: url("../fonts/plus-jakarta-sans-latin-ext.woff2") format("woff2");
   unicode-range:
     U+0100-02BA,
     U+02BD-02C5,
@@ -29,7 +29,7 @@
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url("./fonts/plus-jakarta-sans-latin.woff2") format("woff2");
+  src: url("../fonts/plus-jakarta-sans-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF,
     U+0131,

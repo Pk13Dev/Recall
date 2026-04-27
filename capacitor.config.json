@@ -1,5 +1,5 @@
 {
   "appId": "com.pickl.recall",
   "appName": "RECALL",
-  "webDir": "www"
+  "webDir": "dist/ref"
 }

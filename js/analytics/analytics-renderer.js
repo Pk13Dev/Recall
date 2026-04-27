@@ -1,12 +1,66 @@
 import { formatDecimal, formatDuration, formatMetricText, formatPercent, formatRatioPercent, formatSignedRatioPercent, formatSignedScoreChange, formatTimestamp, formatTrendSlope } from "./analytics-formatters.js";
+import { downloadAnalyticsExport } from "./analytics-export.js";
 import { renderAnalyticsCoverageGraph, renderAnalyticsScoreGraph } from "./analytics-graphs.js";
 import { createDefaultAnalyticsModel } from "./analytics-model.js";
 import { getAnalyticsSnapshot } from "./analytics-snapshot.js";
 import { elements } from "../core/dom.js";
-import { clearError, showScreen } from "../core/screens.js";
+import { clearError, showError, showScreen } from "../core/screens.js";
 import { appendChildren, createElement } from "../core/utils.js";
 import { closeLibraryEditor } from "../library/library-editor.js";
 import { resetVictoryFeedback } from "../ui/effects.js";
+
+const ANALYTICS_EXPORT_BUTTON_ID = "analytics-export-btn";
+const ANALYTICS_EXPORT_STATUS_ID = "analytics-export-status";
+
+export function ensureAnalyticsExportStatus(actionsContainer) {
+  const existingStatus = document.getElementById(ANALYTICS_EXPORT_STATUS_ID);
+  if (existingStatus) {
+    return existingStatus;
+  }
+
+  const exportStatus = createElement("p", "helper-text", "");
+  exportStatus.id = ANALYTICS_EXPORT_STATUS_ID;
+  exportStatus.hidden = true;
+  actionsContainer.appendChild(exportStatus);
+  return exportStatus;
+}
+
+export function ensureAnalyticsExportButton() {
+  const actionsContainer = elements.analyticsBackBtn && elements.analyticsBackBtn.parentElement;
+  if (!actionsContainer) {
+    return null;
+  }
+
+  const exportStatus = ensureAnalyticsExportStatus(actionsContainer);
+
+  const existingButton = document.getElementById(ANALYTICS_EXPORT_BUTTON_ID);
+  if (existingButton) {
+    return existingButton;
+  }
+
+  const exportButton = createElement("button", "btn btn-secondary btn-compact", "Export Data");
+  exportButton.id = ANALYTICS_EXPORT_BUTTON_ID;
+  exportButton.type = "button";
+  exportButton.addEventListener("click", function () {
+    try {
+      const exportResult = downloadAnalyticsExport();
+      exportStatus.textContent = `Saved ${exportResult.fileName} to ${exportResult.locationHint}.`;
+      exportStatus.hidden = false;
+    } catch (error) {
+      showError(error && error.message ? error.message : "Analytics data could not be exported.");
+      return;
+    }
+
+    const originalLabel = exportButton.textContent;
+    exportButton.textContent = "Exported";
+    window.setTimeout(() => {
+      exportButton.textContent = originalLabel;
+    }, 1600);
+  });
+
+  actionsContainer.insertBefore(exportButton, elements.analyticsBackBtn);
+  return exportButton;
+}
 
 export function createAnalyticsEmptyMessage(message) {
   return createElement("p", "analytics-empty-message", message);
@@ -348,6 +402,7 @@ export function renderAnalyticsTopics(snapshot) {
 }
 
 export function renderAnalyticsScreen() {
+  ensureAnalyticsExportButton();
   const snapshot = getAnalyticsSnapshot();
   const totals = snapshot.totals || createDefaultAnalyticsModel().totals;
   const hasAnalyticsData =

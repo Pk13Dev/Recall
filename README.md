@@ -1,76 +1,152 @@
 # RECALL
 
-RECALL is a lightweight offline study app that turns quiz JSON files into multiple-choice practice tests.
+RECALL is a local-first study app for running quiz JSON files as multiple-choice practice sessions. The active source of truth is the refactored app under [js](./js), with [RefIndex.html](./RefIndex.html) as the root Vite entry.
 
-The app runs entirely in the browser. You can upload a single JSON quiz, import folders of quizzes, organize them into a local library, generate overview quizzes, and review your study analytics over time.
+## Quick pipeline
+
+- Root `RefIndex.html` is the refactored app entry for development
+- `css/styles.css` and the files in `audio/` are shared by the refactored build
+- Vite builds the shared web app into `dist/ref`
+- Tauri packages desktop from `dist/ref`
+- Capacitor packages Android from `dist/ref`
+
+### Run
+
+```powershell
+npm run dev
+```
+
+Starts the Vite dev server at `http://127.0.0.1:4173/RefIndex.html`.
+
+### Test
+
+```powershell
+npm test
+```
+
+Runs JavaScript syntax checks and a production Vite build.
+
+### Build web
+
+```powershell
+npm run build
+npm run preview
+```
+
+`npm run build` writes the offline-ready web output to `dist/ref`. `npm run preview` serves that built output locally.
+
+### Build desktop
+
+```powershell
+npm run desktop:dev
+npm run desktop:build
+```
+
+`desktop:dev` opens the Tauri desktop app in development mode. `desktop:build` creates the desktop installer/executable.
+
+### Build mobile
+
+```powershell
+npm run mobile:preflight
+npm run mobile:sync
+npm run mobile:open
+npm run mobile:run
+npm run mobile:build
+```
+
+Android builds use JDK 21, with JDK 17 as a fallback for older generated projects. The mobile scripts auto-detect a supported local JDK and pass it to Capacitor/Gradle, which avoids newer Java releases breaking Android's Gradle/JDK image step. `mobile:sync` builds the ref app and syncs `dist/ref` into Android. `mobile:open` opens Android Studio. `mobile:run` deploys to a connected emulator/device. `mobile:build` asks Capacitor to build the Android release.
+
+### Build APK
+
+```powershell
+npm run apk
+npm run apk:debug
+npm run apk:release
+```
+
+`npm run apk` is the quick debug APK path. It builds the ref app, syncs Capacitor, runs Gradle `assembleDebug`, and prints the APK path. `apk:release` runs `assembleRelease` and may require signing configuration before it can produce an installable release APK.
+
+## Build output
+
+The ref build is written to `dist/ref`.
+
+- `dist/ref/index.html` is the Tauri-facing entry
+- `dist/ref/RefIndex.html` is kept as the named offline artifact
+
+Both are generated from the same refactored source and packaged for local use.
+
+## Features
+
+- Local quiz import and study library
+- Folder organization and overview quiz generation
+- Session analytics and export
+- Portable goal-based analytics
+- Goal-based result sounds
+- Theme and sound settings
+- Desktop and mobile-friendly layout
 
 ## What RECALL does
 
 - Uploads quiz files in JSON format
-- Parses the quiz locally in the browser
+- Parses quiz content locally in the browser or app
 - Starts an interactive multiple-choice quiz immediately
-- Shows one question at a time with exactly 4 answers
-- Randomly selects up to 20 questions from larger quiz files for each attempt
-- Selects those 4 answers from a larger answer pool when a question includes extra distractors
+- Shows one question at a time with exactly 4 answers per question
+- Randomly selects up to 20 questions from larger quiz files for a standard run
+- Supports `Quickie` runs that sample 3 random questions from a saved quiz
 - Shuffles answer positions without losing the correct answer
 - Tracks scores, question results, timestamps, and answer times
-- Stores imported quizzes locally in the built-in browser library
-- Supports folders of quizzes, nested folders, and overview quiz generation
-- Includes analytics for recent sessions, quiz performance, most-missed questions, and recent answers
-- Works without a backend
-
-## Main features
-
-- Drag-and-drop JSON upload
-- `Upload JSON` file picker
-- `Open Folder` import for multiple quiz files at once
-- Friendly validation for invalid quiz JSON
-- Local library with folders and saved quizzes
-- Folder overview mode
-- Quiz sounds and answer feedback animations
-- Victory and loss end-of-quiz effects
-- Theme switching
-- Analytics dashboard
-- Responsive layout for desktop and mobile
+- Stores imported quizzes locally in the built-in library
+- Supports folders of quizzes, nested folders, ZIP import, and overview quiz generation
+- Includes analytics for recent sessions, performance trends, behavior patterns, and question-level accuracy
+- Keeps all study data on the local device
 
 ## How to use
 
-### 1. Download the project
+### 1. Start the app
 
-Download or clone the project files and keep everything together in one folder.
-
-Important files include:
-
-- `index.html`
-- `styles.css`
-- `app.js`
-- `win.mp3`
-- `fail.mp3`
-- `Victory.mp3`
-- `Loser.mp3`
-
-### 2. Open the app
-
-Open `index.html` directly for the offline app, or run the local HTTPS server and open the printed URL:
+Use the refactored app through Vite during development:
 
 ```powershell
-npm run cert
-npm start
+npm run dev
 ```
 
-The server binds to `127.0.0.1` only and uses a self-signed localhost certificate generated on your machine.
+Create the packaged build with:
 
-### 3. Add quizzes
+```powershell
+npm run build
+```
 
-You can load quizzes in three ways:
+For the desktop wrapper:
 
-- Drag a `.json` file into the upload area or
+```powershell
+npm run desktop:dev
+npm run desktop:build
+```
+
+For Android:
+
+```powershell
+npm run mobile:sync
+npm run mobile:open
+```
+
+### 2. Add quizzes
+
+You can load quizzes in three main ways:
+
 - Click `Upload JSON` to select a single quiz file
-- Click `Open Folder` to import a folder of quiz files
+- Click `Open Folder` to import many quiz files at once
+- Drag and drop a ZIP file onto the upload area
 
-Imported quizzes are stored locally in the app library.
+Important note:
 
-### 4. Start a quiz
+- Drag and drop currently accepts ZIP files only
+- If you want to bring in a plain JSON file, use `Upload JSON`
+- If you want to bring in a normal folder from disk, use `Open Folder`
+
+Imported quizzes are stored locally in the app library on that device.
+
+### 3. Start a quiz
 
 After a valid quiz is loaded:
 
@@ -81,7 +157,13 @@ After a valid quiz is loaded:
 - You move to the next question
 - A final score screen appears at the end
 
-### 5. Organize your library
+Saved quizzes also expose `Actions`, including:
+
+- `Load` for a normal run
+- `Quickie` for a short 3-question run
+- rename, move, and delete tools
+
+### 4. Organize your library
 
 Inside the library you can:
 
@@ -92,7 +174,7 @@ Inside the library you can:
 - Rename quizzes
 - Open saved quizzes later
 
-### 6. Use overview mode
+### 5. Use overview mode
 
 If a folder contains quiz JSON files and no subfolders, RECALL unlocks `Overview`.
 
@@ -103,7 +185,7 @@ Overview mode:
 - Saves that generated overview quiz back into the same folder
 - Lets you study a broader review set quickly
 
-### 7. Check analytics
+### 6. Check analytics
 
 Open the `Analytics` page from the library or results screen to review:
 
@@ -116,10 +198,11 @@ Open the `Analytics` page from the library or results screen to review:
 - Quiz-by-quiz performance
 - Most missed questions
 - Recent right and wrong answers
+- Goal-based performance summaries
 
-## Supported JSON format
+Use `Export Data` in analytics to download a JSON file that can move your statistics to another device, as long as that device has the same quiz files and filenames.
 
-RECALL expects quiz files in this structure:
+## Supported quiz shape
 
 ```json
 {
@@ -131,8 +214,7 @@ RECALL expects quiz files in this structure:
         "Option 1",
         "Option 2",
         "Option 3",
-        "Option 4",
-        "Option 5"
+        "Option 4"
       ],
       "correctIndex": 0
     }
@@ -150,7 +232,8 @@ RECALL validates quiz files before starting:
 - Each question must include between 4 and 17 options
 - `correctIndex` must point to one of the entries in `options`
 - If `correctAnswer` is included, it must match `options[correctIndex]`
-- If a quiz contains more than 20 questions, RECALL randomly picks 20 questions for that run
+- If a quiz contains more than 20 questions, RECALL randomly picks 20 questions for a standard run
+- `Quickie` runs use up to 3 random questions from a saved quiz
 - RECALL always displays exactly 4 answers per attempt, and one of them is always the correct answer
 - Questions with 5 to 17 options let RECALL randomly pick 3 incorrect answers each time the quiz starts
 - Extra explanation text outside valid JSON is not supported
@@ -188,19 +271,6 @@ RECALL validates quiz files before starting:
 }
 ```
 
-## How RECALL works
-
-RECALL is a front-end-only web app.
-
-That means:
-
-- Quiz files are read locally in your browser
-- There is no backend server
-- There is no account system
-- Your library and analytics stay on your device in browser storage
-- Imported quizzes are stored in the app's local browser library
-- If browser storage is unavailable, the app can fall back to temporary in-memory behavior for that session
-
 ## Analytics and tracking transparency
 
 RECALL tracks study activity locally so the analytics page can work.
@@ -217,58 +287,46 @@ Tracked data includes:
 - Timestamps for answers and completed sessions
 - Time spent answering each question
 - Final quiz score percentage
+- Goal percentage used for goal-based analytics and result sounds
 - Total session duration
+
+Calculated analytics include:
+
+- Total sessions
+- Overall accuracy
+- Average score
+- Average answer time
+- Questions per minute
+- Total study time
+- Rolling score averages
+- Consistency estimates
+- Recent sessions
+- Quiz-level performance
+- Most-missed questions
+- Time insights
+- Topic strength summaries
+- Recent answers
+- Goal-based summaries and result classifications
 
 This tracking is used only inside the local app and is not sent to an external service.
 
-## Offline behavior
+## Data export
 
-RECALL is designed to work offline once the files are on your machine.
+The analytics export creates a JSON file designed to move your statistics between devices.
 
-If you open `index.html` directly or run the local server with `npm start`, the app can:
+- It assumes the destination device has the same quiz files
+- It assumes matching file and folder names
+- It exports analytics data in a concise JSON structure
+- It does not upload anything to a server
 
-- read quiz files
-- store your library locally
-- keep analytics locally
-- run without internet access
-
-## Project structure
-
-```text
-RECALL/
-|- index.html
-|- styles.css
-|- app.js
-|- scripts/
-|  |- create-local-cert.js
-|  `- serve-root.js
-|- README.md
-|- sample-quiz.json
-|- win.mp3
-|- fail.mp3
-|- Victory.mp3
-`- Loser.mp3
-```
-
-## Sharing with friends
-
-To share RECALL:
-
-- send the full project folder
-- keep all files together
-- tell them to open `index.html`, or run `npm run cert` and `npm start` for the local HTTPS server
-- tell them to prepare quiz files in the supported JSON format
-
-Their saved library and analytics will stay local to their own browser on their own machine.
+After export, RECALL notifies you that the file was sent to your browser or app download folder, usually `Downloads`.
 
 ## Notes
 
-- Overview quizzes are generated from existing quizzes in eligible folders
-- Answers are shuffled at quiz start, but the original saved quiz data is kept unchanged
+- All quiz processing, library data, and analytics stay local to the device
+- The ref build is the maintained path going forward
+- Android and other wrapper-specific folders are maintained separately
 
 ## License
 
-This project is licensed under the MIT License.
-
-See the [LICENSE](./LICENSE) file for the full license text.
-
+This project is licensed under the MIT License. See [LICENSE](./LICENSE).

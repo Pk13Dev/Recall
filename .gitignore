@@ -1,2 +1,42 @@
 node_modules/
+
+# Local certificates
 .cert/
+
+# Build output
+dist/
+
+# Android local and generated state
+android/.gradle/
+android/.idea/
+android/build/
+android/local.properties
+android/app/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/res/xml/config.xml
+
+# Desktop build output
+src-tauri/target/
+src-tauri/gen/
+
+# Mobile artifacts and signing files
+*.apk
+*.aab
+*.apks
+*.keystore
+*.jks
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
