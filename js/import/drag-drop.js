@@ -1,5 +1,25 @@
 import { createImportEntry, getImportEntriesFromFileList } from "./import-model.js";
 
+export function shouldUseFileSystemHandleApi() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (!window.isSecureContext) {
+    return false;
+  }
+
+  if (window.location && window.location.protocol === "file:") {
+    return false;
+  }
+
+  if ("__TAURI_INTERNALS__" in window) {
+    return false;
+  }
+
+  return true;
+}
+
 export async function readDroppedHandle(handle, parentPath) {
   if (!handle) {
     return [];
@@ -96,6 +116,7 @@ export async function getImportEntriesFromDrop(event) {
   const items = Array.from((dataTransfer && dataTransfer.items) || []);
   const droppedFiles = Array.from((dataTransfer && dataTransfer.files) || []);
   const entries = [];
+  const allowFileSystemHandles = shouldUseFileSystemHandleApi();
 
   if (items.length) {
     for (const item of items) {
@@ -103,23 +124,23 @@ export async function getImportEntriesFromDrop(event) {
         continue;
       }
 
-      if (typeof item.getAsFileSystemHandle === "function") {
+      const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
+      if (entry) {
+        const droppedEntries = await readDroppedEntry(entry, "").catch(() => []);
+        if (droppedEntries.length) {
+          entries.push(...droppedEntries);
+          continue;
+        }
+      }
+
+      if (allowFileSystemHandles && typeof item.getAsFileSystemHandle === "function") {
         const handle = await item.getAsFileSystemHandle().catch(() => null);
         if (handle) {
-          const droppedHandleEntries = await readDroppedHandle(handle, "");
+          const droppedHandleEntries = await readDroppedHandle(handle, "").catch(() => []);
           if (droppedHandleEntries.length) {
             entries.push(...droppedHandleEntries);
             continue;
           }
-        }
-      }
-
-      const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
-      if (entry) {
-        const droppedEntries = await readDroppedEntry(entry, "");
-        if (droppedEntries.length) {
-          entries.push(...droppedEntries);
-          continue;
         }
       }
 

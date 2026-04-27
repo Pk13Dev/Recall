@@ -1,6 +1,6 @@
 import { elements } from "../core/dom.js";
 import { showError } from "../core/screens.js";
-import { getImportEntriesFromDrop } from "../import/drag-drop.js";
+import { getImportEntriesFromFileList, isZipImportEntry } from "../import/import-model.js";
 import { processQuizFile, processQuizFiles } from "../import/import-processing.js";
 
 export function hasDraggedFiles(event) {
@@ -131,6 +131,14 @@ export function initializeUploadEvents() {
 export async function onDrop(event) {
   event.preventDefault();
   elements.dropZone.classList.remove("is-dragover");
-  const importEntries = await getImportEntriesFromDrop(event);
+
+  const droppedFiles = Array.from((event.dataTransfer && event.dataTransfer.files) || []).filter(Boolean);
+  const importEntries = getImportEntriesFromFileList(droppedFiles);
+
+  if (!importEntries.length || importEntries.some((entry) => !isZipImportEntry(entry))) {
+    showError("Drag and drop only accepts ZIP files. Use Upload JSON or Open Folder for other imports.");
+    return;
+  }
+
   await processQuizFiles(importEntries);
 }
