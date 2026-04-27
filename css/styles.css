@@ -319,18 +319,38 @@ body.theme-vibrant .app-shell::before {
 
 .app-header {
   position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
   text-align: center;
-  margin-bottom: 1.95rem;
+  margin-bottom: 2.2rem;
+  padding-top: 0.15rem;
+}
+
+.app-header::before {
+  content: "";
+  position: absolute;
+  inset: -0.35rem 15% auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 68%, transparent), transparent);
+  opacity: 0.68;
+  pointer-events: none;
 }
 
 .top-controls {
-  position: absolute;
-  top: 0;
-  right: 0;
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
   gap: 0.45rem;
+  width: min(100%, 34rem);
+  margin: 0 auto 0.45rem;
+  padding: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--surface-border) 74%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+  box-shadow: 0 10px 24px rgba(10, 16, 26, 0.08);
+  backdrop-filter: blur(16px);
 }
 
 .sound-control {
@@ -348,12 +368,14 @@ body.theme-vibrant .app-shell::before {
   font-weight: 600;
   padding: 0.36rem 0.72rem;
   cursor: pointer;
-  transition: border-color 140ms ease, background-color 140ms ease;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 
 .sound-toggle-btn:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(21, 31, 43, 0.12);
 }
 
 .sound-toggle-btn:focus-visible {
@@ -440,13 +462,14 @@ body.theme-vibrant .app-shell::before {
   letter-spacing: 0.08em;
   font-size: 0.76rem;
   color: var(--muted);
-  margin: 0;
+  margin: 0.05rem 0 0;
 }
 
 h1 {
-  margin: 0.3rem 0;
+  margin: 0.1rem 0 0;
   font-size: clamp(2rem, 4vw, 2.7rem);
   letter-spacing: -0.03em;
+  line-height: 0.92;
 }
 
 .app-home-btn {
@@ -459,10 +482,14 @@ h1 {
   letter-spacing: inherit;
   padding: 0;
   cursor: pointer;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 22%, transparent);
+  transition: color 160ms ease, transform 160ms ease, text-shadow 160ms ease;
 }
 
 .app-home-btn:hover {
   color: var(--accent);
+  transform: translateY(-1px);
+  text-shadow: 0 0 24px color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .app-home-btn:focus-visible {
@@ -472,9 +499,10 @@ h1 {
 }
 
 .tagline {
-  margin: 0 auto;
+  margin: 0.2rem auto 0;
   max-width: 34rem;
   color: var(--muted);
+  font-size: clamp(1rem, 1.7vw, 1.08rem);
 }
 
 .screen {
@@ -492,6 +520,31 @@ h1 {
   box-shadow: var(--card-shadow);
   border-radius: var(--radius-lg);
   padding: clamp(1.2rem, 2.2vw, 2rem);
+  position: relative;
+  overflow: hidden;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, color-mix(in srgb, var(--card-sheen) 82%, transparent) 48%, transparent 76%);
+  opacity: 0;
+  transform: translateX(-12%);
+  transition: opacity 220ms ease, transform 220ms ease;
+  pointer-events: none;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--elevated-shadow-hover);
+  border-color: color-mix(in srgb, var(--surface-border) 76%, var(--accent) 24%);
+}
+
+.card:hover::after {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 h2 {
@@ -520,7 +573,9 @@ h3 {
 
 .upload-card {
   padding: 1rem 1.15rem 1.05rem;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--accent-soft) 8%), var(--surface));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 62%, transparent) 0%, transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 90%, var(--accent-soft) 10%), var(--surface));
 }
 
 .upload-card-grid {
@@ -631,7 +686,7 @@ h3 {
   font-weight: 600;
   padding: 0.72rem 1.1rem;
   cursor: pointer;
-  transition: transform 120ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  transition: transform 120ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
 .btn:focus-visible {
@@ -652,6 +707,7 @@ h3 {
 .btn-primary:not(:disabled):hover {
   background: var(--primary-hover-bg);
   transform: translateY(-1px);
+  box-shadow: 0 14px 22px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .btn-secondary {
@@ -663,6 +719,7 @@ h3 {
 .btn-secondary:hover {
   background: var(--secondary-hover-bg);
   transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(19, 28, 40, 0.1);
 }
 
 .btn-compact {
@@ -2023,14 +2080,23 @@ h3 {
   }
 
   .top-controls {
-    position: static;
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 0.6rem;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 0.7rem;
+    padding: 0.35rem 0.4rem;
   }
 
   .sound-popup {
     right: 0;
+  }
+
+  .sound-toggle-btn {
+    font-size: 0.78rem;
+    padding: 0.38rem 0.66rem;
+  }
+
+  h1 {
+    line-height: 0.96;
   }
 
   .card {

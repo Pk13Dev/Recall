@@ -54,7 +54,13 @@ npm run mobile:run
 npm run mobile:build
 ```
 
-Android builds use JDK 21, with JDK 17 as a fallback for older generated projects. The mobile scripts auto-detect a supported local JDK and pass it to Capacitor/Gradle, which avoids newer Java releases breaking Android's Gradle/JDK image step. `mobile:sync` builds the ref app and syncs `dist/ref` into Android. `mobile:open` opens Android Studio. `mobile:run` deploys to a connected emulator/device. `mobile:build` asks Capacitor to build the Android release.
+Android builds use JDK 21, with JDK 17 as a fallback for older generated projects. The mobile scripts auto-detect a supported local JDK and pass it to Capacitor/Gradle, which avoids newer Java releases breaking Android's Gradle/JDK image step. `mobile:sync` builds the ref app and syncs `dist/ref` into Android. `mobile:open` opens Android Studio. `mobile:run` deploys to a connected emulator/device. `mobile:build` creates a release APK through Gradle and prints the output path. If no signing config is set up yet, Android may produce an unsigned release APK.
+
+Android output locations:
+
+- `npm run mobile:build` writes the release APK to `android/app/build/outputs/apk/release/app-release-unsigned.apk`
+- `npm run apk` or `npm run apk:debug` writes the debug APK to `android/app/build/outputs/apk/debug/app-debug.apk`
+- `npm run apk:release` writes the release APK to `android/app/build/outputs/apk/release/app-release-unsigned.apk`
 
 ### Build APK
 
@@ -64,7 +70,7 @@ npm run apk:debug
 npm run apk:release
 ```
 
-`npm run apk` is the quick debug APK path. It builds the ref app, syncs Capacitor, runs Gradle `assembleDebug`, and prints the APK path. `apk:release` runs `assembleRelease` and may require signing configuration before it can produce an installable release APK.
+`npm run apk` is the quick debug APK path. It builds the ref app, syncs Capacitor, runs Gradle `assembleDebug`, and prints the APK path. `apk:release` runs `assembleRelease` and prints the release APK path. If release signing is not configured yet, the output may be an unsigned release APK.
 
 ## Build output
 
@@ -72,6 +78,7 @@ The ref build is written to `dist/ref`.
 
 - `dist/ref/index.html` is the Tauri-facing entry
 - `dist/ref/RefIndex.html` is kept as the named offline artifact
+- Android APKs are written to `android/app/build/outputs/apk/`
 
 Both are generated from the same refactored source and packaged for local use.
 

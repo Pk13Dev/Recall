@@ -8,6 +8,16 @@ const javaMajorPreference = [21, 17];
 const supportedJavaMajors = new Set(javaMajorPreference);
 const command = process.argv[2] || "preflight";
 
+function parseJavaMajorFromText(value) {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.match(/(?:jdk|jre)[-._]?(\d+)|^(\d+)(?:[._-]|$)/i);
+  const rawMajor = match ? Number(match[1] || match[2]) : null;
+  return Number.isFinite(rawMajor) ? rawMajor : null;
+}
+
 function commandName(name) {
   return process.platform === "win32" ? `${name}.cmd` : name;
 }
@@ -59,7 +69,14 @@ function findAndroidJdk() {
   const candidates = getCandidateRoots()
     .map((root) => {
       const javaPath = path.join(root, "bin", process.platform === "win32" ? "java.exe" : "java");
-      return fs.existsSync(javaPath) ? { root, javaPath, major: getJavaVersion(javaPath) } : null;
+      if (!fs.existsSync(javaPath)) {
+        return null;
+      }
+
+      const inferredMajor = parseJavaMajorFromText(path.basename(root));
+      const detectedMajor = getJavaVersion(javaPath);
+      const major = detectedMajor || inferredMajor;
+      return major ? { root, javaPath, major } : null;
     })
     .filter((candidate) => candidate && supportedJavaMajors.has(candidate.major))
     .sort((left, right) => javaMajorPreference.indexOf(left.major) - javaMajorPreference.indexOf(right.major));
@@ -143,14 +160,20 @@ function gradleCommand() {
 }
 
 function printApkLocation(variant) {
-  const apkPath = path.join(androidRoot, "app", "build", "outputs", "apk", variant, `app-${variant}.apk`);
+  const outputDir = path.join(androidRoot, "app", "build", "outputs", "apk", variant);
+  const candidates = [
+    path.join(outputDir, `app-${variant}.apk`),
+    path.join(outputDir, `app-${variant}-unsigned.apk`)
+  ];
 
-  if (fs.existsSync(apkPath)) {
-    console.log(`APK ready: ${apkPath}`);
-    return;
+  for (const apkPath of candidates) {
+    if (fs.existsSync(apkPath)) {
+      console.log(`APK ready: ${apkPath}`);
+      return;
+    }
   }
 
-  console.log(`APK build finished, but the expected ${variant} APK was not found at: ${apkPath}`);
+  console.log(`APK build finished, but the expected ${variant} APK was not found in: ${outputDir}`);
 }
 
 const jdk = findAndroidJdk();
@@ -182,7 +205,9 @@ if (command === "run") {
 
 if (command === "build") {
   run("npm", ["run", "build"], mobileEnv);
-  run("npx", ["cap", "build", "android"], mobileEnv);
+  run("npx", ["cap", "sync", "android"], mobileEnv);
+  runIn(androidRoot, gradleCommand(), ["assembleRelease"], mobileEnv);
+  printApkLocation("release");
   process.exit(0);
 }
 
