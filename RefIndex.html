@@ -196,7 +196,7 @@
     </section>
 
     <section id="quiz-screen" class="screen" aria-labelledby="question-text">
-      <div class="card">
+      <div class="card quiz-card">
         <div class="quiz-meta">
           <p id="progress-text" class="progress-text">Question 1 of 1</p>
           <p id="score-text" class="score-text">Score: 0</p>
@@ -310,6 +310,16 @@
               <div id="analytics-behavior-list" class="analytics-list"></div>
             </section>
 
+            <section class="card analytics-panel">
+              <div class="analytics-panel-header">
+                <div>
+                  <p class="analytics-panel-kicker">FIB</p>
+                  <h3>Fill-In-The-Blank Attempts</h3>
+                </div>
+              </div>
+              <div id="analytics-fib-list" class="analytics-list"></div>
+            </section>
+
             <section class="card analytics-panel analytics-panel-wide">
               <div class="analytics-panel-header">
                 <div>
@@ -388,6 +398,17 @@
                     <p class="analytics-graph-note">Library overview</p>
                   </div>
                   <div id="analytics-coverage-graph" class="analytics-graph-body"></div>
+                </article>
+
+                <article class="analytics-graph-card">
+                  <div class="analytics-graph-header">
+                    <div>
+                      <p class="analytics-panel-kicker">FIB</p>
+                      <h4 class="analytics-graph-title">Second Try Recovery</h4>
+                    </div>
+                    <p class="analytics-graph-note">Blank outcomes across first and second tries</p>
+                  </div>
+                  <div id="analytics-fib-second-try-graph" class="analytics-graph-body"></div>
                 </article>
               </div>
             </section>

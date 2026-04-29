@@ -149,3 +149,40 @@ export function renderAnalyticsCoverageGraph(snapshot) {
 
   container.appendChild(chart);
 }
+
+export function renderAnalyticsFibSecondTryGraph(fibStats) {
+  const container = elements.analyticsFibSecondTryGraph;
+  container.innerHTML = "";
+
+  if (!fibStats || (Number(fibStats.questionsAnswered) || 0) <= 0) {
+    container.appendChild(createElement("p", "analytics-empty-message", "Answer FIB questions to see retry patterns."));
+    return;
+  }
+
+  const bars = [
+    { label: "1st try right", value: Number(fibStats.firstTryCorrect) || 0, tone: "success" },
+    { label: "1st try wrong", value: Number(fibStats.firstTryWrong) || 0, tone: "danger" },
+    { label: "2nd try right", value: Number(fibStats.secondTryCorrect) || 0, tone: "success" },
+    { label: "2nd try wrong", value: Number(fibStats.secondTryWrong) || 0, tone: "danger" },
+    { label: "Fixed on retry", value: Number(fibStats.secondTryImproved) || 0, tone: "default" }
+  ];
+  const maxValue = Math.max(...bars.map((bar) => bar.value), 1);
+  const chart = createElement("div", "analytics-bar-chart analytics-bar-chart-fib");
+
+  bars.forEach((bar) => {
+    const row = createElement("div", "analytics-bar-row");
+    const copy = createElement("div", "analytics-bar-copy");
+    copy.appendChild(createElement("span", "analytics-bar-label", bar.label));
+    copy.appendChild(createElement("span", "analytics-bar-value", String(bar.value)));
+    row.appendChild(copy);
+
+    const track = createElement("div", "analytics-bar-track");
+    const fill = createElement("span", `analytics-bar-fill analytics-bar-fill-${bar.tone}`);
+    fill.style.width = `${(bar.value / maxValue) * 100}%`;
+    track.appendChild(fill);
+    row.appendChild(track);
+    chart.appendChild(row);
+  });
+
+  container.appendChild(chart);
+}

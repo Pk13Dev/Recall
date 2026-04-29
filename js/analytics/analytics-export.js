@@ -1,8 +1,8 @@
-import { createDefaultAnalyticsModel, createDefaultBehaviorStats, createDefaultDropoffStats, createDefaultStreakStats, decorateQuestionStat, decorateQuizStat } from "./analytics-model.js";
+import { createDefaultAnalyticsModel, createDefaultBehaviorStats, createDefaultDropoffStats, createDefaultFibStats, createDefaultStreakStats, decorateFibStats, decorateQuestionStat, decorateQuizStat } from "./analytics-model.js";
 import { libraryRuntime } from "../core/state.js";
 import { getGoalPercent } from "../ui/settings.js";
 
-const ANALYTICS_EXPORT_VERSION = 1;
+const ANALYTICS_EXPORT_VERSION = 2;
 const ANALYTICS_EXPORT_TYPE = "recall-analytics-export";
 
 export function normalizeExportText(value, fallback) {
@@ -67,7 +67,21 @@ export function exportRecentSession(session) {
     averageAnswerMs: Number(session.averageAnswerMs) || 0,
     questionsPerMinute: Number.isFinite(Number(session.questionsPerMinute)) ? Number(session.questionsPerMinute) : null,
     scoreDelta: Number.isFinite(Number(session.scoreDelta)) ? Number(session.scoreDelta) : null,
-    dropoffRate: Number.isFinite(Number(session.dropoffRate)) ? Number(session.dropoffRate) : null
+    dropoffRate: Number.isFinite(Number(session.dropoffRate)) ? Number(session.dropoffRate) : null,
+    fibStats: exportFibStats(session.fibStats)
+  };
+}
+
+export function exportFibAttemptSummary(attempt) {
+  return {
+    attemptNumber: Number(attempt && attempt.attemptNumber) || 0,
+    totalBlanks: Number(attempt && attempt.totalBlanks) || 0,
+    correctCount: Number(attempt && attempt.correctCount) || 0,
+    wrongCount: Number(attempt && attempt.wrongCount) || 0,
+    misplacedCount: Number(attempt && attempt.misplacedCount) || 0,
+    baitCount: Number(attempt && attempt.baitCount) || 0,
+    missingCount: Number(attempt && attempt.missingCount) || 0,
+    isCorrect: Boolean(attempt && attempt.isCorrect)
   };
 }
 
@@ -84,9 +98,43 @@ export function exportRecentAnswer(answer) {
     questionText: normalizeExportText(answer.questionText, "Untitled question"),
     selectedOption: normalizeExportText(answer.selectedOption, ""),
     correctOption: normalizeExportText(answer.correctOption, ""),
+    questionType: normalizeExportText(answer.questionType, "multiple-choice"),
+    attemptCount: Number(answer.attemptCount) || 1,
+    fibAttempts: Array.isArray(answer.fibAttempts) ? answer.fibAttempts.map(exportFibAttemptSummary) : [],
+    fibFirstTryCorrectCount: Number(answer.fibFirstTryCorrectCount) || 0,
+    fibFirstTryWrongCount: Number(answer.fibFirstTryWrongCount) || 0,
+    fibSecondTryCorrectCount: Number(answer.fibSecondTryCorrectCount) || 0,
+    fibSecondTryWrongCount: Number(answer.fibSecondTryWrongCount) || 0,
+    fibSecondTryImprovedCount: Number(answer.fibSecondTryImprovedCount) || 0,
     isCorrect: Boolean(answer.isCorrect),
     answeredAt: Number(answer.answeredAt) || 0,
     elapsedMs: Number(answer.elapsedMs) || 0
+  };
+}
+
+export function exportFibStats(stats) {
+  const decoratedStats = decorateFibStats(stats || createDefaultFibStats());
+  return {
+    questionsAnswered: decoratedStats.questionsAnswered,
+    questionsSolvedFirstTry: decoratedStats.questionsSolvedFirstTry,
+    questionsSolvedSecondTry: decoratedStats.questionsSolvedSecondTry,
+    questionsMissedAfterSecondTry: decoratedStats.questionsMissedAfterSecondTry,
+    secondTryQuestions: decoratedStats.secondTryQuestions,
+    firstTryBlanks: decoratedStats.firstTryBlanks,
+    firstTryCorrect: decoratedStats.firstTryCorrect,
+    firstTryWrong: decoratedStats.firstTryWrong,
+    secondTryBlanks: decoratedStats.secondTryBlanks,
+    secondTryCorrect: decoratedStats.secondTryCorrect,
+    secondTryWrong: decoratedStats.secondTryWrong,
+    secondTryImproved: decoratedStats.secondTryImproved,
+    misplacedCount: decoratedStats.misplacedCount,
+    baitCount: decoratedStats.baitCount,
+    missingCount: decoratedStats.missingCount,
+    firstTryAccuracy: Number.isFinite(Number(decoratedStats.firstTryAccuracy)) ? decoratedStats.firstTryAccuracy : null,
+    secondTryAccuracy: Number.isFinite(Number(decoratedStats.secondTryAccuracy)) ? decoratedStats.secondTryAccuracy : null,
+    secondTryUseRate: Number.isFinite(Number(decoratedStats.secondTryUseRate)) ? decoratedStats.secondTryUseRate : null,
+    secondTryFixRate: Number.isFinite(Number(decoratedStats.secondTryFixRate)) ? decoratedStats.secondTryFixRate : null,
+    secondTryBlankFixRate: Number.isFinite(Number(decoratedStats.secondTryBlankFixRate)) ? decoratedStats.secondTryBlankFixRate : null
   };
 }
 
@@ -110,6 +158,7 @@ export function exportQuizStat(stat) {
     retentionChange: Number.isFinite(Number(decoratedStat.retentionChange)) ? Number(decoratedStat.retentionChange) : null,
     consistencyScore: Number.isFinite(Number(decoratedStat.consistencyScore)) ? Number(decoratedStat.consistencyScore) : null,
     timePerCorrectMs: Number.isFinite(Number(decoratedStat.timePerCorrectMs)) ? Number(decoratedStat.timePerCorrectMs) : null,
+    fibStats: exportFibStats(decoratedStat.fibStats),
     firstCompletedAt: Number(decoratedStat.firstCompletedAt) || 0,
     lastCompletedAt: Number(decoratedStat.lastCompletedAt) || 0
   };
@@ -134,6 +183,14 @@ export function exportQuestionStat(stat) {
     difficulty: Number.isFinite(Number(decoratedStat.difficulty)) ? Number(decoratedStat.difficulty) : null,
     errorRate: Number.isFinite(Number(decoratedStat.errorRate)) ? Number(decoratedStat.errorRate) : null,
     masteryScore: Number.isFinite(Number(decoratedStat.masteryScore)) ? Number(decoratedStat.masteryScore) : null,
+    fibAttempts: Number(decoratedStat.fibAttempts) || 0,
+    fibFirstTryCorrect: Number(decoratedStat.fibFirstTryCorrect) || 0,
+    fibFirstTryWrong: Number(decoratedStat.fibFirstTryWrong) || 0,
+    fibSecondTryCorrect: Number(decoratedStat.fibSecondTryCorrect) || 0,
+    fibSecondTryWrong: Number(decoratedStat.fibSecondTryWrong) || 0,
+    fibSecondTryImproved: Number(decoratedStat.fibSecondTryImproved) || 0,
+    fibFirstTryAccuracy: Number.isFinite(Number(decoratedStat.fibFirstTryAccuracy)) ? decoratedStat.fibFirstTryAccuracy : null,
+    fibSecondTryAccuracy: Number.isFinite(Number(decoratedStat.fibSecondTryAccuracy)) ? decoratedStat.fibSecondTryAccuracy : null,
     firstAnsweredAt: Number(decoratedStat.firstAnsweredAt) || 0,
     lastAnsweredAt: Number(decoratedStat.lastAnsweredAt) || 0,
     lastResult: Boolean(decoratedStat.lastResult)
@@ -157,6 +214,7 @@ export function buildAnalyticsExportData() {
   const behaviorStats = analytics.behaviorStats || createDefaultBehaviorStats();
   const streakStats = analytics.streakStats || createDefaultStreakStats();
   const dropoffStats = analytics.dropoffStats || createDefaultDropoffStats();
+  const fibStats = analytics.fibStats || createDefaultFibStats();
   const exportedAt = Date.now();
 
   return {
@@ -216,6 +274,7 @@ export function buildAnalyticsExportData() {
         sessionsTracked: Number(dropoffStats.sessionsTracked) || 0,
         totalDropoff: Number(dropoffStats.totalDropoff) || 0
       },
+      fib: exportFibStats(fibStats),
       topics: {
         folders: exportTopicEntries(analytics.topicStats && analytics.topicStats.byFolder),
         quizKinds: exportTopicEntries(analytics.topicStats && analytics.topicStats.byQuizKind)

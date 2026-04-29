@@ -1,5 +1,5 @@
 import { clearError, showError } from "../core/screens.js";
-import { shuffleList } from "../core/utils.js";
+import { cloneQuestion, shuffleList } from "../core/utils.js";
 import { getLaunchContextForQuiz, startQuiz } from "../quiz/quiz-runtime.js";
 import { getFolder, getQuiz } from "../storage/library-model.js";
 import { ensureUniqueQuizName, normalizeEntityName } from "../storage/naming.js";
@@ -27,19 +27,12 @@ export function canGenerateOverview(folderId) {
 export function createOverviewQuestions(sourceQuizzes) {
   const selectedQuestions = sourceQuizzes.map((quiz) => {
     const randomIndex = Math.floor(Math.random() * quiz.questions.length);
-    const question = quiz.questions[randomIndex];
-    return {
-      question: question.question,
-      options: [...question.options],
-      correctIndex: question.correctIndex
-    };
+    return cloneQuestion(quiz.questions[randomIndex]);
   });
 
   return shuffleList(selectedQuestions).map((question, index) => ({
+    ...question,
     id: index + 1,
-    question: question.question,
-    options: question.options,
-    correctIndex: question.correctIndex
   }));
 }
 

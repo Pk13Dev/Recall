@@ -225,6 +225,24 @@ Use `Export Data` in analytics to download a JSON file that can move your statis
       ],
       "correctIndex": 0
     }
+  ],
+  "fillInTheBlanks": [
+    {
+      "id": 2,
+      "title": "Topic or question title",
+      "paragraph": "Write the paragraph here using placeholders like {{b1}}, {{b2}}, and {{b3}}.",
+      "maxBlanks": 3,
+      "selectionMode": "random",
+      "baitWords": ["Plausible wrong answer"],
+      "blanks": [
+        {
+          "id": "b1",
+          "answer": "Correct answer",
+          "acceptedAnswers": ["Correct answer", "Alternative spelling"],
+          "hint": "Optional hint for this blank"
+        }
+      ]
+    }
   ]
 }
 ```
@@ -234,15 +252,18 @@ Use `Export Data` in analytics to download a JSON file that can move your statis
 RECALL validates quiz files before starting:
 
 - The file must contain a valid JSON object
-- The object must contain a non-empty `questions` array
-- Each question must include question text
-- Each question must include between 4 and 17 options
+- The object must contain a non-empty `questions` array, `fillInTheBlanks` array, or both
+- Each multiple-choice question must include question text
+- Each multiple-choice question must include between 4 and 17 options
 - `correctIndex` must point to one of the entries in `options`
 - If `correctAnswer` is included, it must match `options[correctIndex]`
+- Each FIB must include a title, paragraph, and at least one blank
+- FIB paragraphs use placeholders that match blank ids, such as `{{b1}}`
+- FIB word banks are built from blank answers; optional `wordBank`, `baitWords`, `distractors`, or `decoys` entries can add extra choices
 - If a quiz contains more than 20 questions, RECALL randomly picks 20 questions for a standard run
 - `Quickie` runs use up to 3 random questions from a saved quiz
-- RECALL always displays exactly 4 answers per attempt, and one of them is always the correct answer
-- Questions with 5 to 17 options let RECALL randomly pick 3 incorrect answers each time the quiz starts
+- Multiple-choice questions always display exactly 4 answers per attempt, and one of them is always the correct answer
+- Multiple-choice questions with 5 to 17 options let RECALL randomly pick 3 incorrect answers each time the quiz starts
 - Extra explanation text outside valid JSON is not supported
 
 ## Example quiz file

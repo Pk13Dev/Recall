@@ -1,6 +1,6 @@
 import { formatDecimal, formatDuration, formatMetricText, formatPercent, formatRatioPercent, formatSignedRatioPercent, formatSignedScoreChange, formatTimestamp, formatTrendSlope } from "./analytics-formatters.js";
 import { downloadAnalyticsExport } from "./analytics-export.js";
-import { renderAnalyticsCoverageGraph, renderAnalyticsScoreGraph } from "./analytics-graphs.js";
+import { renderAnalyticsCoverageGraph, renderAnalyticsFibSecondTryGraph, renderAnalyticsScoreGraph } from "./analytics-graphs.js";
 import { createDefaultAnalyticsModel } from "./analytics-model.js";
 import { getAnalyticsSnapshot } from "./analytics-snapshot.js";
 import { elements } from "../core/dom.js";
@@ -151,18 +151,24 @@ export function renderAnalyticsSessions(sessions) {
     sessions,
     "No completed quiz sessions yet.",
     4,
-    (session) =>
-      appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
+    (session) => {
+      const fibStats = session.fibStats || {};
+      const fibMeta = (Number(fibStats.questionsAnswered) || 0) > 0
+        ? ` \u2022 FIB 1st ${fibStats.firstTryCorrect}/${fibStats.firstTryBlanks}, 2nd ${fibStats.secondTryCorrect}/${fibStats.secondTryBlanks}`
+        : "";
+
+      return appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
         createAnalyticsRowCopy(
           session.quizName || "Untitled quiz",
           `${session.correctCount || 0}/${session.questionCount || 0} correct \u2022 ${formatDuration(session.durationMs)}`,
           `Delta ${formatMetricText(session.scoreDelta, formatSignedScoreChange)} \u2022 ${formatMetricText(
             session.questionsPerMinute,
             (value) => formatDecimal(value, 1, " qpm")
-          )} \u2022 Drop-off ${formatMetricText(session.dropoffRate, formatSignedRatioPercent)}`
+          )} \u2022 Drop-off ${formatMetricText(session.dropoffRate, formatSignedRatioPercent)}${fibMeta}`
         ),
         createAnalyticsScoreChip(formatPercent(session.scorePercent))
-      ])
+      ]);
+    }
   );
 }
 
@@ -237,17 +243,93 @@ export function renderAnalyticsQuestions(questionStats) {
     "Question-level trends will appear here.",
     4,
     (stat) =>
-      appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
-        createAnalyticsRowCopy(
-          stat.questionText || "Untitled question",
-          stat.quizName || "Unknown quiz",
-          `Accuracy ${formatRatioPercent(stat.questionAccuracy)} \u2022 Difficulty ${formatRatioPercent(
-            stat.difficulty
-          )} \u2022 Avg ${formatDuration(stat.averageTimeMs)} \u2022 Mastery ${formatDecimal(stat.masteryScore, 2)}`
-        ),
-        createAnalyticsScoreChip(stat.lastResult ? "Last: Right" : "Last: Wrong")
-      ])
+      {
+        const fibDetail = (Number(stat.fibAttempts) || 0) > 0
+          ? ` \u2022 FIB 1st ${stat.fibFirstTryCorrect}/${stat.fibFirstTryBlanks} \u2022 2nd ${stat.fibSecondTryCorrect}/${stat.fibSecondTryBlanks}`
+          : "";
+        return appendChildren(createElement("article", "analytics-row analytics-row-compact"), [
+          createAnalyticsRowCopy(
+            stat.questionText || "Untitled question",
+            stat.quizName || "Unknown quiz",
+            `Accuracy ${formatRatioPercent(stat.questionAccuracy)} \u2022 Difficulty ${formatRatioPercent(
+              stat.difficulty
+            )} \u2022 Avg ${formatDuration(stat.averageTimeMs)} \u2022 Mastery ${formatDecimal(stat.masteryScore, 2)}${fibDetail}`
+          ),
+          createAnalyticsScoreChip(stat.lastResult ? "Last: Right" : "Last: Wrong")
+        ]);
+      }
   );
+}
+
+export function formatFibAnswerDetail(answer) {
+  if (!answer || answer.questionType !== "fib") {
+    return "";
+  }
+
+  const firstText = `First try: ${Number(answer.fibFirstTryCorrectCount) || 0} right, ${
+    Number(answer.fibFirstTryWrongCount) || 0
+  } wrong`;
+  if ((Number(answer.fibSecondTryCorrectCount) || 0) <= 0 && (Number(answer.fibSecondTryWrongCount) || 0) <= 0) {
+    return `${firstText}.`;
+  }
+
+  return `${firstText}. Second try: ${Number(answer.fibSecondTryCorrectCount) || 0} right, ${
+    Number(answer.fibSecondTryWrongCount) || 0
+  } wrong; ${Number(answer.fibSecondTryImprovedCount) || 0} fixed.`;
+}
+
+export function renderAnalyticsFib(snapshot) {
+  const container = elements.analyticsFibList;
+  container.innerHTML = "";
+
+  const fibStats = snapshot.fibStats;
+  if (!fibStats || (Number(fibStats.questionsAnswered) || 0) <= 0) {
+    container.appendChild(createAnalyticsEmptyMessage("FIB retry patterns will appear after fill-in-the-blank answers."));
+    return;
+  }
+
+  const summaryGrid = createElement("div", "analytics-performance-stat-grid");
+  summaryGrid.appendChild(
+    createAnalyticsPerformanceStat("FIB Questions", String(fibStats.questionsAnswered), "Completed fill-in-the-blank prompts")
+  );
+  summaryGrid.appendChild(
+    createAnalyticsPerformanceStat(
+      "1st Try",
+      formatRatioPercent(fibStats.firstTryAccuracy),
+      `${fibStats.firstTryCorrect}/${fibStats.firstTryBlanks} blanks right`
+    )
+  );
+  summaryGrid.appendChild(
+    createAnalyticsPerformanceStat(
+      "2nd Try",
+      formatRatioPercent(fibStats.secondTryAccuracy),
+      `${fibStats.secondTryCorrect}/${fibStats.secondTryBlanks} retry blanks right`
+    )
+  );
+  summaryGrid.appendChild(
+    createAnalyticsPerformanceStat(
+      "Retry Saves",
+      String(fibStats.secondTryImproved),
+      `${fibStats.questionsSolvedSecondTry} question${fibStats.questionsSolvedSecondTry === 1 ? "" : "s"} recovered`
+    )
+  );
+  container.appendChild(summaryGrid);
+
+  const list = createElement("div", "analytics-list analytics-list-compact");
+  if (!snapshot.topFibTroubleQuestions.length) {
+    list.appendChild(createAnalyticsEmptyMessage("No difficult FIB questions yet."));
+  } else {
+    snapshot.topFibTroubleQuestions.forEach((stat) => {
+      list.appendChild(
+        createAnalyticsMiniRow(
+          stat.questionText || "Untitled FIB",
+          `1st try ${stat.fibFirstTryCorrect}/${stat.fibFirstTryBlanks} right \u2022 2nd try ${stat.fibSecondTryCorrect}/${stat.fibSecondTryBlanks} right`,
+          `${stat.fibFirstTryWrong} missed`
+        )
+      );
+    });
+  }
+  container.appendChild(list);
 }
 
 export function renderAnalyticsAnswers(answers) {
@@ -257,9 +339,10 @@ export function renderAnalyticsAnswers(answers) {
     "Recent answers will show up here.",
     4,
     (answer) => {
-      const detailText = answer.isCorrect
+      const fibDetailText = formatFibAnswerDetail(answer);
+      const detailText = fibDetailText || (answer.isCorrect
         ? `Correct in ${formatDuration(answer.elapsedMs)}.`
-        : `Picked "${answer.selectedOption || "Unknown"}". Correct: "${answer.correctOption || "Unknown"}".`;
+        : `Picked "${answer.selectedOption || "Unknown"}". Correct: "${answer.correctOption || "Unknown"}".`);
 
       return appendChildren(createElement("article", "analytics-row analytics-row-answer analytics-row-compact"), [
         createAnalyticsRowCopy(
@@ -450,10 +533,12 @@ export function renderAnalyticsScreen() {
   renderAnalyticsQuestions(snapshot.mostIncorrectQuestions);
   renderAnalyticsAnswers(snapshot.recentAnswers);
   renderAnalyticsBehavior(snapshot);
+  renderAnalyticsFib(snapshot);
   renderAnalyticsTime(snapshot);
   renderAnalyticsTopics(snapshot);
   renderAnalyticsScoreGraph(snapshot.trendSeries);
   renderAnalyticsCoverageGraph(snapshot);
+  renderAnalyticsFibSecondTryGraph(snapshot.fibStats);
 }
 
 export function openAnalyticsScreen() {
