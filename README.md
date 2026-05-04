@@ -187,7 +187,8 @@ If a folder contains quiz JSON files and no subfolders, RECALL unlocks `Overview
 
 Overview mode:
 
-- Takes random questions from the quizzes inside that folder
+- Takes one priority question from each quiz inside that folder
+- Prioritizes unattempted questions first, then repeated misses, low-attempt questions, mixed-history questions, and finally mostly-correct questions
 - Builds a new mixed quiz using the normal JSON structure
 - Saves that generated overview quiz back into the same folder
 - Lets you study a broader review set quickly

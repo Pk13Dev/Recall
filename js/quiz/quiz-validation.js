@@ -1,4 +1,5 @@
 import { MAX_OPTIONS_PER_QUESTION, MIN_OPTIONS_PER_QUESTION } from "../core/constants.js";
+import { getQuestionSourceMetadata } from "../core/utils.js";
 
 export function normalizeQuestion(rawQuestion, index) {
   if (typeof rawQuestion !== "object" || rawQuestion === null) {
@@ -50,7 +51,8 @@ export function normalizeQuestion(rawQuestion, index) {
     id: rawQuestion.id ?? index + 1,
     question: questionText,
     options,
-    correctIndex: rawQuestion.correctIndex
+    correctIndex: rawQuestion.correctIndex,
+    ...getQuestionSourceMetadata(rawQuestion)
   };
 }
 

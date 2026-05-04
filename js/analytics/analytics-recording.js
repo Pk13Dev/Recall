@@ -1,7 +1,9 @@
 import { calculateQuestionMastery, calculateSessionDropoff, decorateQuestionStat, decorateQuizStat, ensureDailyStatBucket, ensureTopicEntry, getConsistencyFromStdDev, getLocalDateKey, updateRegressionTotals, updateRunningMoments, updateTopicEntry } from "./analytics-model.js";
+import { buildQuestionAnalyticsKey, buildQuizAnalyticsKey } from "./analytics-keys.js";
 import { MAX_RECENT_ANALYTIC_ANSWERS, MAX_RECENT_ANALYTIC_SESSIONS } from "../core/constants.js";
 import { libraryRuntime, quizState } from "../core/state.js";
 import { safeDivide } from "../core/utils.js";
+import { getFolder, getFolderPath, getQuiz } from "../storage/library-model.js";
 import { scheduleLibrarySave } from "../storage/storage.js";
 
 export function nextAnalyticsId(counterKey, prefix) {
@@ -17,20 +19,38 @@ export function pushLimitedEntry(list, entry, maxItems) {
   }
 }
 
-export function buildQuizAnalyticsKey(session) {
-  if (session.quizId) {
-    return session.quizId;
-  }
-  return `${session.source}:${session.folderPath}:${session.quizName}`;
-}
+export { buildQuestionAnalyticsKey, buildQuizAnalyticsKey } from "./analytics-keys.js";
 
-export function buildQuestionAnalyticsKey(session, question, questionIndex) {
-  const questionId = question && question.id !== undefined && question.id !== null ? String(question.id) : `q-${questionIndex + 1}`;
-  const normalizedText =
-    typeof question.question === "string"
-      ? question.question.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 160)
-      : `question-${questionIndex + 1}`;
-  return `${buildQuizAnalyticsKey(session)}::${questionId}::${normalizedText}`;
+function getQuestionSourceAnalyticsContext(session, question, questionIndex) {
+  const sourceQuizId = question && typeof question.sourceQuizId === "string" ? question.sourceQuizId : "";
+  const sourceQuiz = sourceQuizId ? getQuiz(sourceQuizId) : null;
+  if (!sourceQuiz) {
+    return {
+      session,
+      question,
+      questionIndex
+    };
+  }
+
+  const sourceFolder = getFolder(sourceQuiz.parentFolderId);
+  return {
+    session: {
+      source: "library",
+      quizId: sourceQuiz.id,
+      quizName: sourceQuiz.name,
+      quizKind: sourceQuiz.kind || "quiz",
+      folderId: sourceFolder ? sourceFolder.id : null,
+      folderName: sourceFolder ? sourceFolder.name : session.folderName,
+      folderPath: sourceFolder ? getFolderPath(sourceFolder.id) : session.folderPath
+    },
+    question: {
+      ...question,
+      id: question.sourceQuestionId !== undefined && question.sourceQuestionId !== null ? question.sourceQuestionId : question.id
+    },
+    questionIndex: Number.isInteger(question.sourceQuestionIndex) && question.sourceQuestionIndex >= 0
+      ? question.sourceQuestionIndex
+      : questionIndex
+  };
 }
 
 export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrect, answeredAt) {
@@ -42,18 +62,19 @@ export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrec
   const elapsedMs = Math.max(answeredAt - (quizState.questionStartedAt || answeredAt), 0);
   const session = quizState.activeSession;
   const questionNumber = quizState.currentQuestionIndex + 1;
-  const questionKey = buildQuestionAnalyticsKey(session, currentQuestion, quizState.currentQuestionIndex);
+  const sourceContext = getQuestionSourceAnalyticsContext(session, currentQuestion, quizState.currentQuestionIndex);
+  const questionKey = buildQuestionAnalyticsKey(sourceContext.session, sourceContext.question, sourceContext.questionIndex);
   const attempt = {
     id: nextAnalyticsId("answer", "ans"),
     sessionId: session.id,
-    source: session.source,
-    quizId: session.quizId,
-    quizName: session.quizName,
-    quizKind: session.quizKind,
-    folderId: session.folderId,
-    folderName: session.folderName,
-    folderPath: session.folderPath,
-    questionId: currentQuestion.id,
+    source: sourceContext.session.source,
+    quizId: sourceContext.session.quizId,
+    quizName: sourceContext.session.quizName,
+    quizKind: sourceContext.session.quizKind,
+    folderId: sourceContext.session.folderId,
+    folderName: sourceContext.session.folderName,
+    folderPath: sourceContext.session.folderPath,
+    questionId: sourceContext.question.id,
     questionKey,
     questionNumber,
     questionText: currentQuestion.question,
@@ -96,14 +117,14 @@ export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrec
 
   const questionStat = analytics.questionStats[questionKey] || {
     questionKey,
-    questionId: currentQuestion.id,
+    questionId: sourceContext.question.id,
     questionText: currentQuestion.question,
-    quizId: session.quizId,
-    quizName: session.quizName,
-    quizKind: session.quizKind,
-    folderId: session.folderId,
-    folderName: session.folderName,
-    folderPath: session.folderPath,
+    quizId: sourceContext.session.quizId,
+    quizName: sourceContext.session.quizName,
+    quizKind: sourceContext.session.quizKind,
+    folderId: sourceContext.session.folderId,
+    folderName: sourceContext.session.folderName,
+    folderPath: sourceContext.session.folderPath,
     attempts: 0,
     correctCount: 0,
     wrongCount: 0,

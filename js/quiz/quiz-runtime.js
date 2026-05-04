@@ -3,7 +3,7 @@ import { DISPLAY_OPTION_COUNT, MAX_QUESTIONS_PER_ATTEMPT } from "../core/constan
 import { elements } from "../core/dom.js";
 import { clearError, showScreen } from "../core/screens.js";
 import { quizState } from "../core/state.js";
-import { cloneQuestions, shuffleList } from "../core/utils.js";
+import { cloneQuestions, getQuestionSourceMetadata, shuffleList } from "../core/utils.js";
 import { renderQuestion } from "./quiz-renderer.js";
 import { getFolder, getFolderPath } from "../storage/library-model.js";
 import { normalizeEntityName } from "../storage/naming.js";
@@ -20,7 +20,8 @@ export function selectQuestionOptionsForAttempt(question) {
     id: question.id,
     question: question.question,
     options: attemptOptions,
-    correctIndex: attemptOptions.indexOf(correctOption)
+    correctIndex: attemptOptions.indexOf(correctOption),
+    ...getQuestionSourceMetadata(question)
   };
 }
 

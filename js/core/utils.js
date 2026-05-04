@@ -78,11 +78,26 @@ export function appendChildren(parent, children) {
   return parent;
 }
 
+export function getQuestionSourceMetadata(question) {
+  const metadata = {};
+  if (question && typeof question.sourceQuizId === "string") {
+    metadata.sourceQuizId = question.sourceQuizId;
+  }
+  if (question && question.sourceQuestionId !== undefined && question.sourceQuestionId !== null) {
+    metadata.sourceQuestionId = question.sourceQuestionId;
+  }
+  if (question && Number.isInteger(question.sourceQuestionIndex) && question.sourceQuestionIndex >= 0) {
+    metadata.sourceQuestionIndex = question.sourceQuestionIndex;
+  }
+  return metadata;
+}
+
 export function cloneQuestions(questions) {
   return questions.map((question) => ({
     id: question.id,
     question: question.question,
     options: [...question.options],
-    correctIndex: question.correctIndex
+    correctIndex: question.correctIndex,
+    ...getQuestionSourceMetadata(question)
   }));
 }
