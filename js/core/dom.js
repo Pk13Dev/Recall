@@ -49,6 +49,7 @@ export const elements = {
   scoreText: document.getElementById("score-text"),
   questionText: document.getElementById("question-text"),
   optionsContainer: document.getElementById("options-container"),
+  hintBtn: document.getElementById("hint-btn"),
   nextBtn: document.getElementById("next-btn"),
   finalScore: document.getElementById("final-score"),
   scorePercent: document.getElementById("score-percent"),

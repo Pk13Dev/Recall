@@ -109,6 +109,7 @@ export function renderFillInBlankQuestion(currentQuestion) {
 
   const wrapper = createElement("div", "fib-question");
   const paragraph = createElement("p", "fib-paragraph");
+  const hasHints = currentQuestion.activeBlanks.some((blank) => typeof blank.hint === "string" && blank.hint.trim());
   const status = createElement("p", "fib-status");
   status.setAttribute("aria-live", "polite");
   const bank = createElement("div", "fib-bank");
@@ -117,6 +118,35 @@ export function renderFillInBlankQuestion(currentQuestion) {
   bank.appendChild(bankGrid);
   appendChildren(wrapper, [paragraph, bank, status]);
   elements.optionsContainer.appendChild(wrapper);
+
+  function configureHintButton(hasQuestionHints) {
+    const hintButton = elements.hintBtn;
+    const actionRow = hintButton ? hintButton.parentElement : null;
+    if (!hintButton || !actionRow) {
+      return;
+    }
+
+    hintButton.onclick = null;
+    hintButton.hidden = !hasQuestionHints;
+    hintButton.disabled = !hasQuestionHints;
+    hintButton.textContent = "Hint";
+    hintButton.classList.remove("is-active");
+    hintButton.setAttribute("aria-pressed", "false");
+    actionRow.classList.toggle("has-hint", hasQuestionHints);
+    wrapper.classList.remove("is-hinting");
+
+    if (!hasQuestionHints) {
+      return;
+    }
+
+    hintButton.onclick = function () {
+      const shouldEnableHints = !wrapper.classList.contains("is-hinting");
+      wrapper.classList.toggle("is-hinting", shouldEnableHints);
+      hintButton.textContent = shouldEnableHints ? "Hide Hint" : "Hint";
+      hintButton.classList.toggle("is-active", shouldEnableHints);
+      hintButton.setAttribute("aria-pressed", shouldEnableHints ? "true" : "false");
+    };
+  }
 
   function getWordElement(wordId) {
     return Array.from(wrapper.querySelectorAll("[data-word-id]")).find((element) => element.getAttribute("data-word-id") === wordId) || null;
@@ -583,6 +613,9 @@ export function renderFillInBlankQuestion(currentQuestion) {
     blankButton.setAttribute("tabindex", "0");
     blankButton.setAttribute("data-blank-id", blank.id);
     blankButton.setAttribute("aria-label", `Blank ${blankIndex + 1}${blank.hint ? `, hint: ${blank.hint}` : ""}`);
+    if (blank.hint) {
+      blankButton.setAttribute("data-hint", blank.hint);
+    }
     blankButton.addEventListener("click", function () {
       handleBlankAction(blank.id);
     });
@@ -669,6 +702,7 @@ export function renderFillInBlankQuestion(currentQuestion) {
   });
 
   renderParagraph();
+  configureHintButton(hasHints);
   currentQuestion.wordBank.forEach((word) => {
     bankGrid.appendChild(createWordChip(word));
   });
@@ -684,6 +718,17 @@ export function renderQuestion() {
   quizState.questionStartedAt = Date.now();
   elements.nextBtn.disabled = true;
   elements.nextBtn.textContent = "Next Question";
+  if (elements.hintBtn) {
+    elements.hintBtn.hidden = true;
+    elements.hintBtn.disabled = true;
+    elements.hintBtn.textContent = "Hint";
+    elements.hintBtn.onclick = null;
+    elements.hintBtn.classList.remove("is-active");
+    elements.hintBtn.setAttribute("aria-pressed", "false");
+    if (elements.hintBtn.parentElement) {
+      elements.hintBtn.parentElement.classList.remove("has-hint");
+    }
+  }
 
   elements.progressText.textContent = `Question ${quizState.currentQuestionIndex + 1} of ${quizState.questions.length}`;
   elements.scoreText.textContent = `Score: ${quizState.score}`;

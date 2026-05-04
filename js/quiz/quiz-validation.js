@@ -178,8 +178,20 @@ export function normalizeQuestion(rawQuestion, index) {
 }
 
 export function validateQuizData(rawData) {
-  if (typeof rawData !== "object" || rawData === null || Array.isArray(rawData)) {
-    throw new Error("Please upload a valid JSON object.");
+  if (Array.isArray(rawData)) {
+    const questions = rawData.map((rawQuestion, index) => normalizeQuestion(rawQuestion, index));
+    if (!questions.length) {
+      throw new Error("Your JSON must include at least one question.");
+    }
+    return questions;
+  }
+
+  if (typeof rawData !== "object" || rawData === null) {
+    throw new Error("Please upload a valid JSON object or array.");
+  }
+
+  if (isFillInTheBlankQuestion(rawData)) {
+    return [normalizeFillInTheBlank(rawData, 0)];
   }
 
   const questions = [];
