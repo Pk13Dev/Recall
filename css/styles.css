@@ -52,6 +52,14 @@
     U+FFFD;
 }
 
+@font-face {
+  font-family: "Jersey 15";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/jersey-15-regular.ttf") format("truetype");
+}
+
 :root {
   --bg-top: #f7f8f5;
   --bg-bottom: #eef2ef;
@@ -273,6 +281,122 @@ body.theme-light {
   --page-bg: linear-gradient(170deg, #f7f8f5, #eef2ef);
 }
 
+body.theme-retro {
+  --bg-top: #99a17f;
+  --bg-bottom: #99a17f;
+  --page-bg:
+    repeating-linear-gradient(0deg, rgba(24, 31, 14, 0.05) 0 1px, transparent 1px 4px),
+    #99a17f;
+  --surface: #aab192;
+  --surface-border: #1c2510;
+  --text: #17210d;
+  --muted: #4b5735;
+  --accent: #1f2a12;
+  --accent-soft: #c4ca9d;
+  --drop-border: #1c2510;
+  --drop-bg: #a4ab8c;
+  --drop-hover-bg: #bac195;
+  --secondary-bg: #b5bc97;
+  --secondary-hover-bg: #c4ca9d;
+  --path-bg: #b5bc97;
+  --list-item-bg: #a4ab8c;
+  --option-bg: #b1b894;
+  --option-hover-bg: #c0c69d;
+  --popup-bg: #aab192;
+  --surface-soft: #aab192;
+  --menu-shadow: 4px 4px 0 rgba(20, 29, 11, 0.34);
+  --toggle-bg: #b5bc97;
+  --primary-hover-bg: #2d391a;
+  --card-sheen: transparent;
+  --correct-answer-bg: #c0cfa0;
+  --correct-answer-text: #18220d;
+  --success: #163f18;
+  --success-soft: #a9d66e;
+  --success-text: #0d2109;
+  --danger: #74413d;
+  --danger-soft: #c6a69a;
+  --danger-text: #2d1512;
+  --warning: #74602b;
+  --warning-soft: #c8bd93;
+  --warning-text: #2f260d;
+  --focus-ring: rgba(23, 33, 13, 0.5);
+  --focus-ring-soft: rgba(23, 33, 13, 0.24);
+  --card-shadow: 4px 4px 0 rgba(20, 29, 11, 0.34);
+  --panel-shadow: 4px 4px 0 rgba(20, 29, 11, 0.34);
+  --elevated-shadow: 3px 3px 0 rgba(20, 29, 11, 0.28);
+  --elevated-shadow-hover: 4px 4px 0 rgba(20, 29, 11, 0.36);
+  --modal-shadow: 5px 5px 0 rgba(20, 29, 11, 0.44);
+  --overlay-bg: rgba(24, 31, 14, 0.46);
+  --shadow: 3px 3px 0 rgba(20, 29, 11, 0.3);
+  --radius-lg: 0;
+  --radius-md: 0;
+  --retro-highlight: #c8cea9;
+  --retro-lowlight: #737b5d;
+  --retro-box-shadow: inset 1px 1px 0 var(--retro-highlight), inset -1px -1px 0 var(--retro-lowlight), 3px 3px 0 rgba(20, 29, 11, 0.3);
+  font-family: "Jersey 15", "Courier New", monospace;
+  font-size: 1.14rem;
+  letter-spacing: 0;
+  color-scheme: light;
+  image-rendering: pixelated;
+}
+
+body.theme-aero-frutiger {
+  --bg-top: #7bd7ea;
+  --bg-bottom: #1686ce;
+  --page-bg:
+    linear-gradient(115deg, rgba(186, 255, 239, 0.18) 0 8%, transparent 8% 18%, rgba(103, 238, 205, 0.18) 18% 26%, transparent 26% 100%),
+    repeating-linear-gradient(90deg, rgba(193, 255, 248, 0.08) 0 1px, transparent 1px 54px),
+    linear-gradient(145deg, #bdf7ff 0%, #36c8de 28%, #0b8ed1 58%, #7fe88e 100%);
+  --surface: rgba(82, 215, 224, 0.34);
+  --surface-border: rgba(188, 255, 248, 0.58);
+  --text: #073a55;
+  --muted: #2d7286;
+  --accent: #008ed8;
+  --accent-soft: rgba(196, 255, 239, 0.68);
+  --drop-border: rgba(190, 255, 246, 0.66);
+  --drop-bg: rgba(54, 196, 214, 0.3);
+  --drop-hover-bg: rgba(105, 232, 211, 0.44);
+  --secondary-bg: rgba(98, 214, 224, 0.38);
+  --secondary-hover-bg: rgba(122, 236, 217, 0.5);
+  --path-bg: rgba(86, 214, 222, 0.38);
+  --list-item-bg: rgba(78, 205, 220, 0.34);
+  --option-bg: rgba(108, 221, 228, 0.36);
+  --option-hover-bg: rgba(122, 236, 217, 0.52);
+  --popup-bg: rgba(82, 207, 218, 0.72);
+  --surface-soft: rgba(72, 204, 218, 0.36);
+  --menu-shadow: 0 24px 44px rgba(0, 71, 112, 0.26), inset 0 1px 0 rgba(216, 255, 252, 0.56);
+  --toggle-bg: rgba(98, 214, 224, 0.4);
+  --primary-hover-bg: #00b3e0;
+  --card-sheen: rgba(184, 255, 244, 0.34);
+  --correct-answer-bg: rgba(188, 255, 203, 0.72);
+  --correct-answer-text: #06492b;
+  --success: #1aa968;
+  --success-soft: rgba(184, 255, 203, 0.7);
+  --success-text: #06492b;
+  --danger: #d44b7e;
+  --danger-soft: rgba(255, 211, 229, 0.72);
+  --danger-text: #6b1339;
+  --warning: #e0aa22;
+  --warning-soft: rgba(255, 244, 181, 0.75);
+  --warning-text: #72540b;
+  --focus-ring: rgba(0, 185, 237, 0.48);
+  --focus-ring-soft: rgba(0, 185, 237, 0.26);
+  --card-shadow: 0 26px 54px rgba(0, 65, 110, 0.22), inset 0 1px 0 rgba(210, 255, 250, 0.54), inset 0 -18px 42px rgba(0, 132, 168, 0.18);
+  --panel-shadow: 0 20px 42px rgba(0, 65, 110, 0.24), inset 0 1px 0 rgba(210, 255, 250, 0.6);
+  --elevated-shadow: 0 16px 34px rgba(0, 73, 116, 0.18), inset 0 1px 0 rgba(210, 255, 250, 0.52);
+  --elevated-shadow-hover: 0 24px 46px rgba(0, 73, 116, 0.25), inset 0 1px 0 rgba(220, 255, 250, 0.66);
+  --modal-shadow: 0 30px 70px rgba(0, 43, 88, 0.38), inset 0 1px 0 rgba(220, 255, 250, 0.66);
+  --overlay-bg: rgba(4, 70, 117, 0.38);
+  --shadow: 0 18px 38px rgba(0, 70, 112, 0.2);
+  --radius-lg: 34px;
+  --radius-md: 24px;
+  --aero-glass-highlight: rgba(198, 255, 248, 0.46);
+  --aero-glass-lowlight: rgba(0, 115, 148, 0.14);
+  --aero-glass-border: rgba(197, 255, 247, 0.62);
+  --aero-tech-line: rgba(184, 255, 244, 0.34);
+  overflow-x: hidden;
+}
+
 body.theme-vibrant::before,
 body.theme-vibrant::after {
   content: "";
@@ -331,6 +455,7 @@ body.theme-vibrant .app-shell::before {
 
 .app-header {
   position: relative;
+  z-index: 80;
   display: grid;
   justify-items: center;
   gap: 0.45rem;
@@ -367,6 +492,7 @@ body.theme-vibrant .app-shell::before {
 
 .sound-control {
   position: relative;
+  z-index: 90;
 }
 
 .sound-toggle-btn {
@@ -410,7 +536,7 @@ body.theme-vibrant .app-shell::before {
   transform: translateY(-4px);
   pointer-events: none;
   transition: opacity 140ms ease, transform 140ms ease;
-  z-index: 60;
+  z-index: 500;
 }
 
 .sound-popup.is-open {
@@ -2482,6 +2608,761 @@ h3 {
 
   .modal-actions {
     flex-direction: column;
+  }
+}
+
+body.theme-retro *,
+body.theme-retro *::before,
+body.theme-retro *::after {
+  letter-spacing: 0;
+}
+
+body.theme-retro .app-shell {
+  width: min(100%, 1040px);
+}
+
+body.theme-retro .app-header {
+  gap: 0.35rem;
+  margin-bottom: 1.7rem;
+}
+
+body.theme-retro .app-header::before {
+  inset: -0.15rem 16% auto;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 10px);
+  opacity: 0.44;
+}
+
+body.theme-retro h1,
+body.theme-retro h2,
+body.theme-retro h3,
+body.theme-retro .app-home-btn,
+body.theme-retro .analytics-stat-value,
+body.theme-retro .analytics-performance-stat-value {
+  font-family: "Jersey 15", "Courier New", monospace;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-shadow: 2px 2px 0 rgba(195, 202, 157, 0.75);
+}
+
+body.theme-retro h1 {
+  font-size: clamp(3.2rem, 6vw, 4.8rem);
+  line-height: 0.78;
+}
+
+body.theme-retro h2 {
+  font-size: clamp(1.9rem, 3vw, 2.4rem);
+}
+
+body.theme-retro h3 {
+  font-size: 1.28rem;
+}
+
+body.theme-retro .eyebrow,
+body.theme-retro .upload-kicker,
+body.theme-retro .library-kicker,
+body.theme-retro .guide-kicker,
+body.theme-retro .guide-panel-kicker,
+body.theme-retro .analytics-kicker,
+body.theme-retro .analytics-panel-kicker,
+body.theme-retro .analytics-stat-label,
+body.theme-retro .analytics-performance-stat-label {
+  letter-spacing: 0;
+}
+
+body.theme-retro .top-controls,
+body.theme-retro .sound-popup,
+body.theme-retro .theme-option-btn,
+body.theme-retro .sound-toggle-btn,
+body.theme-retro .card,
+body.theme-retro .drop-zone,
+body.theme-retro .btn,
+body.theme-retro .library-input,
+body.theme-retro .library-select,
+body.theme-retro .modal-card,
+body.theme-retro .library-path-btn,
+body.theme-retro .saved-empty,
+body.theme-retro .saved-item,
+body.theme-retro .saved-item-type,
+body.theme-retro .saved-action-menu-panel,
+body.theme-retro .option-btn,
+body.theme-retro .fib-blank,
+body.theme-retro .fib-word,
+body.theme-retro .fib-bank,
+body.theme-retro .guide-overview-step,
+body.theme-retro .guide-action-item,
+body.theme-retro .guide-action-chip,
+body.theme-retro .guide-status-chip,
+body.theme-retro .guide-storage-list li,
+body.theme-retro .analytics-row,
+body.theme-retro .analytics-score-chip,
+body.theme-retro .analytics-answer-badge,
+body.theme-retro .analytics-empty-message,
+body.theme-retro .analytics-performance-stat,
+body.theme-retro .analytics-performance-group,
+body.theme-retro .analytics-mini-row,
+body.theme-retro .analytics-graph-card,
+body.theme-retro .analytics-bar-track {
+  border-color: var(--surface-border);
+  border-radius: 0;
+  border-width: 2px;
+  box-shadow: var(--retro-box-shadow);
+}
+
+body.theme-retro .top-controls,
+body.theme-retro .sound-popup,
+body.theme-retro .card,
+body.theme-retro .upload-card,
+body.theme-retro .library-card,
+body.theme-retro .library-editor,
+body.theme-retro .guide-hero-card,
+body.theme-retro .guide-overview-step,
+body.theme-retro .guide-action-item,
+body.theme-retro .guide-storage-list li,
+body.theme-retro .analytics-hero-card,
+body.theme-retro .analytics-row,
+body.theme-retro .analytics-performance-stat,
+body.theme-retro .analytics-performance-group,
+body.theme-retro .analytics-mini-row,
+body.theme-retro .analytics-graph-card {
+  background: var(--surface);
+}
+
+body.theme-retro .library-card::before,
+body.theme-retro .card::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+}
+
+body.theme-retro .sound-toggle-btn,
+body.theme-retro .theme-option-btn,
+body.theme-retro .btn,
+body.theme-retro .library-path-btn,
+body.theme-retro .saved-item-btn,
+body.theme-retro .option-btn,
+body.theme-retro .fib-word {
+  background: var(--secondary-bg);
+  color: var(--text);
+  font-family: "Jersey 15", "Courier New", monospace;
+  font-size: 1.05rem;
+  font-weight: 400;
+  min-height: 2.1rem;
+  transition: background-color 60ms steps(1, end), border-color 60ms steps(1, end), transform 60ms steps(1, end), box-shadow 60ms steps(1, end);
+}
+
+body.theme-retro .btn-primary {
+  background: var(--accent);
+  color: #dce2bc;
+}
+
+body.theme-retro .sound-toggle-btn:hover,
+body.theme-retro .theme-option-btn:hover,
+body.theme-retro .theme-option-btn.is-active,
+body.theme-retro .btn:not(:disabled):hover,
+body.theme-retro .library-path-btn:hover,
+body.theme-retro .saved-item-main-btn:hover,
+body.theme-retro .option-btn:hover,
+body.theme-retro .option-btn:focus-visible,
+body.theme-retro .fib-word:hover,
+body.theme-retro .fib-word:focus-visible,
+body.theme-retro .fib-blank:hover,
+body.theme-retro .fib-blank:focus-visible,
+body.theme-retro .fib-blank.is-target,
+body.theme-retro .fib-blank.is-dragover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: inset 1px 1px 0 #d7dcba, inset -1px -1px 0 #6d7559, 2px 2px 0 rgba(20, 29, 11, 0.34);
+  transform: translate(1px, 1px);
+}
+
+body.theme-retro .btn-primary:not(:disabled):hover {
+  background: var(--primary-hover-bg);
+  color: #eef3d1;
+}
+
+body.theme-retro .card:hover,
+body.theme-retro .saved-item:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: inset 1px 1px 0 var(--retro-highlight), inset -1px -1px 0 var(--retro-lowlight), 4px 4px 0 rgba(20, 29, 11, 0.36);
+  transform: translate(1px, 1px);
+}
+
+body.theme-retro .drop-zone {
+  border-style: dashed;
+  background: var(--drop-bg);
+}
+
+body.theme-retro .drop-zone:hover,
+body.theme-retro .drop-zone:focus,
+body.theme-retro .drop-zone.is-dragover,
+body.theme-retro .upload-card.is-dragover .drop-zone {
+  background: var(--drop-hover-bg);
+  transform: translate(1px, 1px);
+}
+
+body.theme-retro .library-input,
+body.theme-retro .library-select,
+body.theme-retro input,
+body.theme-retro select,
+body.theme-retro textarea {
+  background: #b7be98;
+  color: var(--text);
+  border-color: var(--surface-border);
+  border-radius: 0;
+  caret-color: var(--accent);
+  font-family: "Jersey 15", "Courier New", monospace;
+}
+
+body.theme-retro .volume-control {
+  accent-color: var(--accent);
+}
+
+body.theme-retro .saved-item::before {
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 0;
+  background: var(--accent);
+}
+
+body.theme-retro .saved-item-type,
+body.theme-retro .guide-action-chip,
+body.theme-retro .guide-status-chip,
+body.theme-retro .analytics-score-chip,
+body.theme-retro .analytics-answer-badge {
+  background: var(--accent-soft);
+  font-weight: 400;
+}
+
+body.theme-retro .option-btn.is-selected,
+body.theme-retro .fib-blank.is-filled,
+body.theme-retro .fib-word.is-selected {
+  background: var(--accent-soft);
+  box-shadow: inset 1px 1px 0 #d7dcba, inset -1px -1px 0 #6d7559, 2px 2px 0 rgba(20, 29, 11, 0.34);
+}
+
+body.theme-retro .option-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: inset 1px 1px 0 #6d7559, inset -1px -1px 0 #d7dcba, 1px 1px 0 rgba(20, 29, 11, 0.38);
+}
+
+body.theme-retro .option-btn.is-correct,
+body.theme-retro .option-btn.is-correct-answer,
+body.theme-retro .fib-blank.is-correct,
+body.theme-retro .fib-word.is-correct,
+body.theme-retro .analytics-answer-badge.is-correct {
+  border-color: var(--success);
+  background: var(--success-soft);
+  color: var(--success-text);
+  box-shadow: inset 2px 2px 0 #d9e9a8, inset -2px -2px 0 #5f7d3e, 3px 3px 0 rgba(20, 29, 11, 0.46);
+}
+
+body.theme-retro .option-btn.is-correct,
+body.theme-retro .option-btn.is-correct-answer {
+  border-width: 3px;
+  animation: retroAnswerFlash 220ms steps(2, end);
+  transform: none;
+}
+
+body.theme-retro .option-btn.is-wrong,
+body.theme-retro .fib-blank.is-bait,
+body.theme-retro .fib-word.is-bait,
+body.theme-retro .fib-blank.is-missing,
+body.theme-retro .analytics-answer-badge.is-wrong {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  box-shadow: inset 1px 1px 0 #dcc0b5, inset -1px -1px 0 #8d6c64, 2px 2px 0 rgba(20, 29, 11, 0.34);
+}
+
+body.theme-retro .option-btn.is-wrong {
+  animation: retroWrongFlash 180ms steps(2, end);
+  transform: none;
+}
+
+body.theme-retro .fib-blank.is-misplaced,
+body.theme-retro .fib-word.is-misplaced {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  box-shadow: inset 1px 1px 0 #ded3a8, inset -1px -1px 0 #8b8059, 2px 2px 0 rgba(20, 29, 11, 0.34);
+}
+
+body.theme-retro .fib-drag-ghost {
+  box-shadow: 4px 4px 0 rgba(20, 29, 11, 0.42);
+}
+
+body.theme-retro .firework-particle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #17210d;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 rgba(20, 29, 11, 0.46);
+  animation-timing-function: steps(5, end);
+}
+
+body.theme-retro .confetti-layer {
+  z-index: 2;
+}
+
+body.theme-retro .confetti-piece {
+  width: 13px;
+  height: 19px;
+  border: 2px solid #17210d;
+  border-radius: 0;
+  opacity: 0;
+  box-shadow: 2px 2px 0 rgba(20, 29, 11, 0.42);
+  animation-timing-function: steps(9, end);
+}
+
+body.theme-retro .confetti-piece-sad {
+  border-radius: 0;
+}
+
+body.theme-retro .analytics-line-chart-line,
+body.theme-retro .analytics-line-chart-line-secondary {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+body.theme-retro .analytics-line-chart-axis {
+  font-family: "Jersey 15", "Courier New", monospace;
+  font-size: 12px;
+}
+
+body.theme-retro .analytics-line-chart-point {
+  stroke-width: 1;
+}
+
+body.theme-retro .analytics-bar-fill,
+body.theme-retro .analytics-bar-fill-success,
+body.theme-retro .analytics-bar-fill-danger,
+body.theme-retro .analytics-bar-fill-muted {
+  background: var(--accent);
+  border-radius: 0;
+}
+
+body.theme-retro .screen.is-active,
+body.theme-retro .option-btn.is-correct,
+body.theme-retro .option-btn.is-wrong {
+  animation-timing-function: steps(2, end);
+}
+
+@keyframes retroAnswerFlash {
+  0% {
+    background: #e3ecc1;
+    box-shadow: inset 0 0 0 3px #1c2510, 4px 4px 0 rgba(20, 29, 11, 0.48);
+  }
+  50% {
+    background: #91c950;
+  }
+  100% {
+    background: var(--success-soft);
+    box-shadow: inset 2px 2px 0 #d9e9a8, inset -2px -2px 0 #5f7d3e, 3px 3px 0 rgba(20, 29, 11, 0.46);
+  }
+}
+
+@keyframes retroWrongFlash {
+  0% {
+    background: #e0b4a7;
+    box-shadow: inset 0 0 0 3px #1c2510, 4px 4px 0 rgba(20, 29, 11, 0.48);
+  }
+  100% {
+    background: var(--danger-soft);
+    box-shadow: inset 1px 1px 0 #dcc0b5, inset -1px -1px 0 #8d6c64, 2px 2px 0 rgba(20, 29, 11, 0.34);
+  }
+}
+
+body.theme-aero-frutiger::before,
+body.theme-aero-frutiger::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.theme-aero-frutiger::before {
+  top: -12vh;
+  left: -12vw;
+  width: 78vw;
+  height: 58vh;
+  background:
+    linear-gradient(132deg, rgba(184, 255, 244, 0.28), rgba(89, 229, 208, 0.15) 52%, transparent 72%),
+    linear-gradient(28deg, rgba(0, 191, 224, 0.3), transparent 64%);
+  clip-path: polygon(0 0, 78% 0, 47% 100%, 0 82%);
+  filter: blur(3px);
+  opacity: 0.52;
+}
+
+body.theme-aero-frutiger::after {
+  right: -16vw;
+  bottom: -15vh;
+  width: 88vw;
+  height: 46vh;
+  background:
+    linear-gradient(8deg, rgba(156, 255, 111, 0.55), rgba(191, 255, 230, 0.26) 44%, transparent 74%),
+    repeating-linear-gradient(90deg, rgba(185, 255, 238, 0.24) 0 2px, transparent 2px 18px);
+  border-top: 1px solid rgba(185, 255, 238, 0.38);
+  border-radius: 58% 0 0 0;
+  filter: blur(4px);
+  opacity: 0.56;
+}
+
+body.theme-aero-frutiger .app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 6vh 8vw auto auto;
+  width: min(38vw, 430px);
+  height: min(34vw, 360px);
+  border: 1px solid rgba(185, 255, 238, 0.3);
+  border-radius: 43% 57% 46% 54% / 52% 45% 55% 48%;
+  background:
+    linear-gradient(140deg, rgba(184, 255, 244, 0.24), transparent 36%),
+    repeating-linear-gradient(0deg, rgba(184, 255, 244, 0.16) 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(90deg, rgba(184, 255, 244, 0.14) 0 1px, transparent 1px 18px);
+  box-shadow: inset 0 0 42px rgba(184, 255, 244, 0.18), 0 22px 56px rgba(0, 105, 148, 0.16);
+  transform: rotate(-10deg);
+  pointer-events: none;
+  z-index: -1;
+}
+
+body.theme-aero-frutiger .app-header::before {
+  inset: -0.55rem 10% auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.92), rgba(123, 255, 204, 0.66), transparent);
+  box-shadow: 0 0 18px rgba(137, 255, 235, 0.58);
+}
+
+body.theme-aero-frutiger h1,
+body.theme-aero-frutiger h2,
+body.theme-aero-frutiger h3,
+body.theme-aero-frutiger .app-home-btn {
+  color: #064563;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.86), 0 9px 22px rgba(0, 124, 175, 0.2);
+}
+
+body.theme-aero-frutiger h1 {
+  letter-spacing: 0;
+}
+
+body.theme-aero-frutiger .app-header {
+  z-index: 120;
+}
+
+body.theme-aero-frutiger .screen {
+  position: relative;
+  z-index: 1;
+}
+
+body.theme-aero-frutiger .top-controls,
+body.theme-aero-frutiger .sound-popup,
+body.theme-aero-frutiger .theme-option-btn,
+body.theme-aero-frutiger .sound-toggle-btn,
+body.theme-aero-frutiger .card,
+body.theme-aero-frutiger .drop-zone,
+body.theme-aero-frutiger .btn,
+body.theme-aero-frutiger .library-input,
+body.theme-aero-frutiger .library-select,
+body.theme-aero-frutiger .modal-card,
+body.theme-aero-frutiger .library-path-btn,
+body.theme-aero-frutiger .saved-empty,
+body.theme-aero-frutiger .saved-item,
+body.theme-aero-frutiger .saved-item-type,
+body.theme-aero-frutiger .saved-action-menu-panel,
+body.theme-aero-frutiger .option-btn,
+body.theme-aero-frutiger .fib-blank,
+body.theme-aero-frutiger .fib-word,
+body.theme-aero-frutiger .fib-bank,
+body.theme-aero-frutiger .guide-overview-step,
+body.theme-aero-frutiger .guide-action-item,
+body.theme-aero-frutiger .guide-action-chip,
+body.theme-aero-frutiger .guide-status-chip,
+body.theme-aero-frutiger .guide-storage-list li,
+body.theme-aero-frutiger .analytics-row,
+body.theme-aero-frutiger .analytics-score-chip,
+body.theme-aero-frutiger .analytics-answer-badge,
+body.theme-aero-frutiger .analytics-empty-message,
+body.theme-aero-frutiger .analytics-performance-stat,
+body.theme-aero-frutiger .analytics-performance-group,
+body.theme-aero-frutiger .analytics-mini-row,
+body.theme-aero-frutiger .analytics-graph-card,
+body.theme-aero-frutiger .analytics-bar-track {
+  border-color: var(--aero-glass-border);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(22px) saturate(1.55);
+  -webkit-backdrop-filter: blur(22px) saturate(1.55);
+}
+
+body.theme-aero-frutiger .sound-control {
+  z-index: 130;
+}
+
+body.theme-aero-frutiger .sound-popup {
+  z-index: 500;
+}
+
+body.theme-aero-frutiger .top-controls,
+body.theme-aero-frutiger .sound-popup,
+body.theme-aero-frutiger .card,
+body.theme-aero-frutiger .upload-card,
+body.theme-aero-frutiger .library-card,
+body.theme-aero-frutiger .library-editor,
+body.theme-aero-frutiger .guide-hero-card,
+body.theme-aero-frutiger .guide-overview-step,
+body.theme-aero-frutiger .guide-action-item,
+body.theme-aero-frutiger .guide-storage-list li,
+body.theme-aero-frutiger .analytics-hero-card,
+body.theme-aero-frutiger .analytics-row,
+body.theme-aero-frutiger .analytics-performance-stat,
+body.theme-aero-frutiger .analytics-performance-group,
+body.theme-aero-frutiger .analytics-mini-row,
+body.theme-aero-frutiger .analytics-graph-card {
+  background:
+    linear-gradient(180deg, rgba(124, 226, 230, 0.5), rgba(72, 210, 221, 0.32) 48%, rgba(15, 142, 190, 0.22)),
+    linear-gradient(115deg, rgba(182, 255, 242, 0.2), transparent 34%);
+}
+
+body.theme-aero-frutiger .top-controls {
+  width: min(100%, 42rem);
+  padding: 0.48rem;
+  border-radius: 999px;
+}
+
+body.theme-aero-frutiger .sound-popup {
+  width: 268px;
+  border-radius: 24px;
+  padding: 0.72rem;
+  background:
+    linear-gradient(180deg, rgba(122, 224, 230, 0.78), rgba(71, 198, 214, 0.68)),
+    var(--popup-bg);
+}
+
+body.theme-aero-frutiger .theme-options {
+  gap: 0.42rem;
+}
+
+body.theme-aero-frutiger .theme-option-btn {
+  font-size: 0.72rem;
+  line-height: 1.05;
+  min-height: 2.05rem;
+}
+
+body.theme-aero-frutiger .card {
+  border-radius: 34px;
+}
+
+body.theme-aero-frutiger .upload-card,
+body.theme-aero-frutiger .library-card,
+body.theme-aero-frutiger .guide-hero-card,
+body.theme-aero-frutiger .analytics-hero-card {
+  border-radius: 44px 28px 56px 30px;
+}
+
+body.theme-aero-frutiger .card::after {
+  opacity: 0.22;
+  transform: translateX(0);
+  background:
+    linear-gradient(112deg, transparent 0 14%, rgba(182, 255, 241, 0.46) 15%, rgba(85, 222, 212, 0.2) 22%, transparent 32%),
+    linear-gradient(180deg, rgba(177, 255, 244, 0.18), transparent 22%);
+}
+
+body.theme-aero-frutiger .library-card::before {
+  background:
+    linear-gradient(110deg, rgba(178, 255, 241, 0.24), transparent 28%),
+    radial-gradient(ellipse at top right, rgba(72, 222, 202, 0.24), transparent 58%);
+  opacity: 0.42;
+}
+
+body.theme-aero-frutiger .sound-toggle-btn,
+body.theme-aero-frutiger .theme-option-btn,
+body.theme-aero-frutiger .btn,
+body.theme-aero-frutiger .library-path-btn,
+body.theme-aero-frutiger .saved-item-btn,
+body.theme-aero-frutiger .option-btn,
+body.theme-aero-frutiger .fib-word,
+body.theme-aero-frutiger .fib-blank {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(192, 255, 247, 0.62), rgba(129, 232, 229, 0.46) 45%, rgba(20, 165, 205, 0.32)),
+    var(--secondary-bg);
+  color: var(--text);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+body.theme-aero-frutiger .sound-toggle-btn::before,
+body.theme-aero-frutiger .theme-option-btn::before,
+body.theme-aero-frutiger .btn::before,
+body.theme-aero-frutiger .library-path-btn::before,
+body.theme-aero-frutiger .saved-item-btn::before,
+body.theme-aero-frutiger .option-btn::before,
+body.theme-aero-frutiger .fib-word::before,
+body.theme-aero-frutiger .fib-blank::before {
+  content: "";
+  position: absolute;
+  inset: 2px 8px auto;
+  height: 42%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(210, 255, 250, 0.64), rgba(184, 255, 244, 0.1));
+  opacity: 0.64;
+  pointer-events: none;
+}
+
+body.theme-aero-frutiger .sound-toggle-btn:hover,
+body.theme-aero-frutiger .theme-option-btn:hover,
+body.theme-aero-frutiger .theme-option-btn.is-active,
+body.theme-aero-frutiger .btn:not(:disabled):hover,
+body.theme-aero-frutiger .library-path-btn:hover,
+body.theme-aero-frutiger .saved-item-main-btn:hover,
+body.theme-aero-frutiger .option-btn:hover,
+body.theme-aero-frutiger .option-btn:focus-visible,
+body.theme-aero-frutiger .fib-word:hover,
+body.theme-aero-frutiger .fib-word:focus-visible,
+body.theme-aero-frutiger .fib-blank:hover,
+body.theme-aero-frutiger .fib-blank:focus-visible,
+body.theme-aero-frutiger .fib-blank.is-target,
+body.theme-aero-frutiger .fib-blank.is-dragover {
+  border-color: rgba(205, 255, 249, 0.82);
+  background:
+    linear-gradient(180deg, rgba(205, 255, 249, 0.72), rgba(112, 236, 218, 0.58) 44%, rgba(0, 177, 218, 0.38)),
+    var(--secondary-hover-bg);
+  box-shadow: 0 16px 30px rgba(0, 119, 168, 0.24), inset 0 1px 0 rgba(213, 255, 250, 0.7);
+}
+
+body.theme-aero-frutiger .btn-primary {
+  background:
+    linear-gradient(180deg, rgba(184, 255, 244, 0.44), rgba(0, 182, 221, 0.82) 46%, #008ed8),
+    var(--accent);
+  color: #ffffff;
+  text-shadow: 0 1px 1px rgba(0, 67, 95, 0.44);
+}
+
+body.theme-aero-frutiger .drop-zone {
+  border-radius: 28px 42px 28px 42px;
+  border-style: solid;
+}
+
+body.theme-aero-frutiger .library-input,
+body.theme-aero-frutiger .library-select,
+body.theme-aero-frutiger input,
+body.theme-aero-frutiger select,
+body.theme-aero-frutiger textarea {
+  border-radius: 18px;
+  background: rgba(141, 229, 230, 0.44);
+  color: var(--text);
+  border-color: rgba(205, 255, 249, 0.64);
+  box-shadow: inset 0 1px 9px rgba(0, 122, 156, 0.16), inset 0 1px 0 rgba(213, 255, 250, 0.58);
+}
+
+body.theme-aero-frutiger .volume-control {
+  accent-color: #00bfe8;
+}
+
+body.theme-aero-frutiger .saved-item {
+  border-radius: 28px 18px 34px 18px;
+}
+
+body.theme-aero-frutiger .saved-item::before {
+  width: 7px;
+  top: 16px;
+  bottom: 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #9dffdc, #00bfe8, #57dc72);
+  opacity: 0.94;
+}
+
+body.theme-aero-frutiger .saved-action-menu-panel {
+  border-radius: 20px;
+  background: rgba(222, 252, 255, 0.76);
+}
+
+body.theme-aero-frutiger .saved-item-type,
+body.theme-aero-frutiger .guide-action-chip,
+body.theme-aero-frutiger .guide-status-chip,
+body.theme-aero-frutiger .analytics-score-chip,
+body.theme-aero-frutiger .analytics-answer-badge {
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(190, 255, 247, 0.62), rgba(110, 232, 213, 0.54)),
+    var(--accent-soft);
+}
+
+body.theme-aero-frutiger .option-btn {
+  border-radius: 22px;
+  padding-top: 0.92rem;
+  padding-bottom: 0.92rem;
+}
+
+body.theme-aero-frutiger .option-btn.is-selected,
+body.theme-aero-frutiger .fib-blank.is-filled,
+body.theme-aero-frutiger .fib-word.is-selected {
+  border-color: rgba(205, 255, 249, 0.82);
+  background:
+    linear-gradient(180deg, rgba(196, 255, 247, 0.62), rgba(112, 236, 218, 0.62), rgba(15, 159, 212, 0.34)),
+    var(--accent-soft);
+}
+
+body.theme-aero-frutiger .option-btn.is-correct,
+body.theme-aero-frutiger .option-btn.is-correct-answer,
+body.theme-aero-frutiger .fib-blank.is-correct,
+body.theme-aero-frutiger .fib-word.is-correct,
+body.theme-aero-frutiger .analytics-answer-badge.is-correct {
+  border-color: rgba(212, 255, 231, 0.86);
+  background:
+    linear-gradient(180deg, rgba(213, 255, 229, 0.68), rgba(160, 248, 183, 0.74), rgba(26, 169, 104, 0.42)),
+    var(--success-soft);
+  color: var(--success-text);
+}
+
+body.theme-aero-frutiger .option-btn.is-wrong,
+body.theme-aero-frutiger .fib-blank.is-bait,
+body.theme-aero-frutiger .fib-word.is-bait,
+body.theme-aero-frutiger .fib-blank.is-missing,
+body.theme-aero-frutiger .analytics-answer-badge.is-wrong {
+  border-color: rgba(255, 218, 233, 0.76);
+  background:
+    linear-gradient(180deg, rgba(255, 220, 234, 0.58), rgba(255, 181, 211, 0.7), rgba(212, 75, 126, 0.32)),
+    var(--danger-soft);
+  color: var(--danger-text);
+}
+
+body.theme-aero-frutiger .fib-bank {
+  border-radius: 26px;
+}
+
+body.theme-aero-frutiger .analytics-line-chart-line,
+body.theme-aero-frutiger .analytics-line-chart-line-secondary {
+  filter: drop-shadow(0 0 5px rgba(0, 204, 240, 0.36));
+}
+
+body.theme-aero-frutiger .analytics-line-chart-point {
+  stroke: rgba(205, 255, 249, 0.82);
+}
+
+body.theme-aero-frutiger .analytics-bar-track {
+  border-radius: 999px;
+  background: rgba(78, 194, 212, 0.34);
+}
+
+body.theme-aero-frutiger .analytics-bar-fill,
+body.theme-aero-frutiger .analytics-bar-fill-success,
+body.theme-aero-frutiger .analytics-bar-fill-danger,
+body.theme-aero-frutiger .analytics-bar-fill-muted {
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74), 0 0 14px rgba(0, 203, 236, 0.24);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.theme-aero-frutiger .top-controls,
+  body.theme-aero-frutiger .sound-popup,
+  body.theme-aero-frutiger .card,
+  body.theme-aero-frutiger .saved-item,
+  body.theme-aero-frutiger .option-btn {
+    background: rgba(112, 218, 226, 0.84);
   }
 }
 

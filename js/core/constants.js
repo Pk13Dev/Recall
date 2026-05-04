@@ -71,13 +71,15 @@ export const MIN_OPTIONS_PER_QUESTION = 4;
 
 export const MAX_OPTIONS_PER_QUESTION = 17;
 
-export const THEMES = ["light", "dark", "neon", "vibrant"];
+export const THEMES = ["light", "dark", "neon", "vibrant", "retro", "aero-frutiger"];
 
 export const THEME_LABELS = {
   light: "Light",
   dark: "Dark",
   neon: "Neon",
-  vibrant: "Vibrant"
+  vibrant: "Vibrant",
+  retro: "Retro",
+  "aero-frutiger": "Frutiger Aero"
 };
 
 export const ROOT_LIBRARY_LABEL = "Library";

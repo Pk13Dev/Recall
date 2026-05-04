@@ -10,6 +10,9 @@ export function triggerFireworks(targetButton) {
   burst.className = "firework-burst";
   burst.style.left = `${rect.left + rect.width / 2}px`;
   burst.style.top = `${rect.top + rect.height / 2}px`;
+  const colors = document.body.classList.contains("theme-retro")
+    ? ["#b9d77a", "#e0d265", "#83c5a2", "#d9a08d", "#8aa6cf", "#f0e8b0"]
+    : fireworkColors;
 
   for (let i = 0; i < 16; i += 1) {
     const particle = document.createElement("span");
@@ -18,7 +21,7 @@ export function triggerFireworks(targetButton) {
     particle.className = "firework-particle";
     particle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
     particle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
-    particle.style.backgroundColor = fireworkColors[i % fireworkColors.length];
+    particle.style.backgroundColor = colors[i % colors.length];
     particle.style.animationDelay = `${Math.random() * 80}ms`;
     burst.appendChild(particle);
   }
@@ -42,7 +45,9 @@ export function triggerVictoryConfetti() {
   const rect = originCard.getBoundingClientRect();
   const originX = rect.left + rect.width / 2;
   const originY = rect.top + rect.height / 2;
-  const colors = ["#4e7b72", "#79d6ff", "#ffd166", "#ff7b72", "#8cd9af", "#f4a261"];
+  const colors = document.body.classList.contains("theme-retro")
+    ? ["#b9d77a", "#e0d265", "#83c5a2", "#d9a08d", "#8aa6cf", "#f0e8b0"]
+    : ["#4e7b72", "#79d6ff", "#ffd166", "#ff7b72", "#8cd9af", "#f4a261"];
   const pieceCount = 110;
 
   for (let index = 0; index < pieceCount; index += 1) {
