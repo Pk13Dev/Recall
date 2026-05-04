@@ -2,7 +2,7 @@ import { buildQuestionAnalyticsKey } from "../analytics/analytics-keys.js";
 import { decorateQuestionStat } from "../analytics/analytics-model.js";
 import { clearError, showError } from "../core/screens.js";
 import { libraryRuntime } from "../core/state.js";
-import { shuffleList } from "../core/utils.js";
+import { cloneQuestion, shuffleList } from "../core/utils.js";
 import { getLaunchContextForQuiz, startQuiz } from "../quiz/quiz-runtime.js";
 import { getFolder, getFolderPath, getQuiz } from "../storage/library-model.js";
 import { ensureUniqueQuizName, normalizeEntityName } from "../storage/naming.js";
@@ -137,14 +137,11 @@ function selectOverviewQuestionForQuiz(quiz) {
 }
 
 function createOverviewQuestionFromCandidate(candidate) {
-  const question = candidate.question;
+  const question = cloneQuestion(candidate.question);
   return {
-    id: question.id,
-    question: question.question,
-    options: [...question.options],
-    correctIndex: question.correctIndex,
+    ...question,
     sourceQuizId: candidate.quiz.id,
-    sourceQuestionId: question.id,
+    sourceQuestionId: candidate.question.id,
     sourceQuestionIndex: candidate.questionIndex
   };
 }
@@ -156,13 +153,8 @@ export function createOverviewQuestions(sourceQuizzes) {
     .map(createOverviewQuestionFromCandidate);
 
   return shuffleList(selectedQuestions).map((question, index) => ({
-    id: index + 1,
-    question: question.question,
-    options: question.options,
-    correctIndex: question.correctIndex,
-    sourceQuizId: question.sourceQuizId,
-    sourceQuestionId: question.sourceQuestionId,
-    sourceQuestionIndex: question.sourceQuestionIndex
+    ...question,
+    id: index + 1
   }));
 }
 

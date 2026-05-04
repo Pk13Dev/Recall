@@ -1,4 +1,4 @@
-import { calculateQuestionMastery, calculateSessionDropoff, decorateQuestionStat, decorateQuizStat, ensureDailyStatBucket, ensureTopicEntry, getConsistencyFromStdDev, getLocalDateKey, updateRegressionTotals, updateRunningMoments, updateTopicEntry } from "./analytics-model.js";
+import { accumulateFibStats, calculateQuestionMastery, calculateSessionDropoff, createDefaultFibStats, decorateFibStats, decorateQuestionStat, decorateQuizStat, ensureDailyStatBucket, ensureTopicEntry, getConsistencyFromStdDev, getLocalDateKey, summarizeFibAttempts, updateRegressionTotals, updateRunningMoments, updateTopicEntry } from "./analytics-model.js";
 import { buildQuestionAnalyticsKey, buildQuizAnalyticsKey } from "./analytics-keys.js";
 import { MAX_RECENT_ANALYTIC_ANSWERS, MAX_RECENT_ANALYTIC_SESSIONS } from "../core/constants.js";
 import { libraryRuntime, quizState } from "../core/state.js";
@@ -53,7 +53,15 @@ function getQuestionSourceAnalyticsContext(session, question, questionIndex) {
   };
 }
 
-export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrect, answeredAt) {
+export function summarizeSessionFibAnswers(answers) {
+  const stats = createDefaultFibStats();
+  (Array.isArray(answers) ? answers : []).forEach((answer) => {
+    accumulateFibStats(stats, summarizeFibAttempts(answer && answer.fibAttempts));
+  });
+  return decorateFibStats(stats);
+}
+
+export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrect, answeredAt, answerDetails) {
   if (!libraryRuntime.model || !quizState.activeSession) {
     return;
   }
@@ -64,6 +72,20 @@ export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrec
   const questionNumber = quizState.currentQuestionIndex + 1;
   const sourceContext = getQuestionSourceAnalyticsContext(session, currentQuestion, quizState.currentQuestionIndex);
   const questionKey = buildQuestionAnalyticsKey(sourceContext.session, sourceContext.question, sourceContext.questionIndex);
+  const questionType = answerDetails && answerDetails.questionType ? answerDetails.questionType : currentQuestion.type || "multiple-choice";
+  const fibSummary = summarizeFibAttempts(answerDetails && answerDetails.fibAttempts);
+  const selectedOption =
+    answerDetails && typeof answerDetails.selectedOption === "string"
+      ? answerDetails.selectedOption
+      : currentQuestion.options && currentQuestion.options[selectedIndex];
+  const correctOption =
+    answerDetails && typeof answerDetails.correctOption === "string"
+      ? answerDetails.correctOption
+      : currentQuestion.options && currentQuestion.options[currentQuestion.correctIndex];
+  const correctIndex =
+    questionType === "fib"
+      ? null
+      : currentQuestion.correctIndex;
   const attempt = {
     id: nextAnalyticsId("answer", "ans"),
     sessionId: session.id,
@@ -78,10 +100,21 @@ export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrec
     questionKey,
     questionNumber,
     questionText: currentQuestion.question,
+    questionType,
     selectedIndex,
-    selectedOption: currentQuestion.options[selectedIndex],
-    correctIndex: currentQuestion.correctIndex,
-    correctOption: currentQuestion.options[currentQuestion.correctIndex],
+    selectedOption,
+    correctIndex,
+    correctOption,
+    attemptCount: answerDetails && Number.isInteger(answerDetails.attemptCount) ? answerDetails.attemptCount : 1,
+    fibAttempts: fibSummary.attempts,
+    fibFirstTryCorrectCount: fibSummary.firstTryCorrect,
+    fibFirstTryWrongCount: fibSummary.firstTryWrong,
+    fibSecondTryCorrectCount: fibSummary.secondTryCorrect,
+    fibSecondTryWrongCount: fibSummary.secondTryWrong,
+    fibSecondTryImprovedCount: fibSummary.secondTryImproved,
+    fibMisplacedCount: fibSummary.misplacedCount,
+    fibBaitCount: fibSummary.baitCount,
+    fibMissingCount: fibSummary.missingCount,
     isCorrect,
     answeredAt,
     elapsedMs
@@ -103,6 +136,9 @@ export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrec
   }
   if (isCorrect && isFastAnswer) {
     analytics.behaviorStats.fastCorrectCount += 1;
+  }
+  if (fibSummary.questionsAnswered) {
+    analytics.fibStats = accumulateFibStats(analytics.fibStats || createDefaultFibStats(), fibSummary);
   }
   if (isCorrect) {
     analytics.streakStats.currentCorrectStreak += 1;
@@ -139,10 +175,25 @@ export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrec
     lastAnsweredAt: 0,
     lastResult: false,
     lastSelectedOption: "",
-    correctOption: currentQuestion.options[currentQuestion.correctIndex],
+    correctOption,
     fastWrongCount: 0,
     slowWrongCount: 0,
-    fastCorrectCount: 0
+    fastCorrectCount: 0,
+    fibAttempts: 0,
+    fibQuestionsSolvedFirstTry: 0,
+    fibQuestionsSolvedSecondTry: 0,
+    fibQuestionsMissedAfterSecondTry: 0,
+    fibSecondTryQuestions: 0,
+    fibFirstTryBlanks: 0,
+    fibFirstTryCorrect: 0,
+    fibFirstTryWrong: 0,
+    fibSecondTryBlanks: 0,
+    fibSecondTryCorrect: 0,
+    fibSecondTryWrong: 0,
+    fibSecondTryImproved: 0,
+    fibMisplacedCount: 0,
+    fibBaitCount: 0,
+    fibMissingCount: 0
   };
 
   questionStat.attempts += 1;
@@ -163,8 +214,8 @@ export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrec
   }
   questionStat.lastAnsweredAt = answeredAt;
   questionStat.lastResult = isCorrect;
-  questionStat.lastSelectedOption = currentQuestion.options[selectedIndex];
-  questionStat.correctOption = currentQuestion.options[currentQuestion.correctIndex];
+  questionStat.lastSelectedOption = selectedOption;
+  questionStat.correctOption = correctOption;
   if (!isCorrect && isFastAnswer) {
     questionStat.fastWrongCount += 1;
   }
@@ -173,6 +224,26 @@ export function recordQuestionAnalytics(currentQuestion, selectedIndex, isCorrec
   }
   if (isCorrect && isFastAnswer) {
     questionStat.fastCorrectCount += 1;
+  }
+  if (fibSummary.questionsAnswered) {
+    questionStat.fibAttempts = (Number(questionStat.fibAttempts) || 0) + fibSummary.questionsAnswered;
+    questionStat.fibQuestionsSolvedFirstTry =
+      (Number(questionStat.fibQuestionsSolvedFirstTry) || 0) + fibSummary.questionsSolvedFirstTry;
+    questionStat.fibQuestionsSolvedSecondTry =
+      (Number(questionStat.fibQuestionsSolvedSecondTry) || 0) + fibSummary.questionsSolvedSecondTry;
+    questionStat.fibQuestionsMissedAfterSecondTry =
+      (Number(questionStat.fibQuestionsMissedAfterSecondTry) || 0) + fibSummary.questionsMissedAfterSecondTry;
+    questionStat.fibSecondTryQuestions = (Number(questionStat.fibSecondTryQuestions) || 0) + fibSummary.secondTryQuestions;
+    questionStat.fibFirstTryBlanks = (Number(questionStat.fibFirstTryBlanks) || 0) + fibSummary.firstTryBlanks;
+    questionStat.fibFirstTryCorrect = (Number(questionStat.fibFirstTryCorrect) || 0) + fibSummary.firstTryCorrect;
+    questionStat.fibFirstTryWrong = (Number(questionStat.fibFirstTryWrong) || 0) + fibSummary.firstTryWrong;
+    questionStat.fibSecondTryBlanks = (Number(questionStat.fibSecondTryBlanks) || 0) + fibSummary.secondTryBlanks;
+    questionStat.fibSecondTryCorrect = (Number(questionStat.fibSecondTryCorrect) || 0) + fibSummary.secondTryCorrect;
+    questionStat.fibSecondTryWrong = (Number(questionStat.fibSecondTryWrong) || 0) + fibSummary.secondTryWrong;
+    questionStat.fibSecondTryImproved = (Number(questionStat.fibSecondTryImproved) || 0) + fibSummary.secondTryImproved;
+    questionStat.fibMisplacedCount = (Number(questionStat.fibMisplacedCount) || 0) + fibSummary.misplacedCount;
+    questionStat.fibBaitCount = (Number(questionStat.fibBaitCount) || 0) + fibSummary.baitCount;
+    questionStat.fibMissingCount = (Number(questionStat.fibMissingCount) || 0) + fibSummary.missingCount;
   }
   analytics.questionStats[questionKey] = decorateQuestionStat(questionStat);
 
@@ -192,6 +263,7 @@ export function completeAnalyticsSession(scorePercent) {
     .slice()
     .sort((left, right) => (Number(right.completedAt) || 0) - (Number(left.completedAt) || 0))[0];
   const dropoff = calculateSessionDropoff(session.answers);
+  const sessionFibStats = summarizeSessionFibAnswers(session.answers);
   const scoreDelta = previousSession ? scorePercent - (Number(previousSession.scorePercent) || 0) : null;
   const questionsPerMinute = safeDivide(session.questionCount, durationMs / 60000, null);
   const summary = {
@@ -218,7 +290,13 @@ export function completeAnalyticsSession(scorePercent) {
     scoreDelta,
     firstHalfAccuracy: dropoff.firstHalfAccuracy,
     secondHalfAccuracy: dropoff.secondHalfAccuracy,
-    dropoffRate: dropoff.dropoffRate
+    dropoffRate: dropoff.dropoffRate,
+    fibStats: sessionFibStats,
+    fibQuestionCount: sessionFibStats.questionsAnswered,
+    fibFirstTryCorrect: sessionFibStats.firstTryCorrect,
+    fibFirstTryWrong: sessionFibStats.firstTryWrong,
+    fibSecondTryCorrect: sessionFibStats.secondTryCorrect,
+    fibSecondTryWrong: sessionFibStats.secondTryWrong
   };
 
   pushLimitedEntry(analytics.recentSessions, summary, MAX_RECENT_ANALYTIC_SESSIONS);
@@ -264,6 +342,7 @@ export function completeAnalyticsSession(scorePercent) {
     scoreStdDev: 0,
     consistencyScore: null,
     timePerCorrectMs: null,
+    fibStats: createDefaultFibStats(),
     lastCompletedAt: 0,
     lastScorePercent: 0
   };
@@ -293,6 +372,7 @@ export function completeAnalyticsSession(scorePercent) {
   quizStat.scoreStdDev = Math.sqrt(Math.max(quizStat.scoreVariance, 0));
   quizStat.consistencyScore = getConsistencyFromStdDev(quizStat.scoreStdDev);
   quizStat.timePerCorrectMs = safeDivide(quizStat.totalTimeMs, quizStat.totalCorrect, null);
+  quizStat.fibStats = accumulateFibStats(quizStat.fibStats || createDefaultFibStats(), sessionFibStats);
   quizStat.lastCompletedAt = completedAt;
   quizStat.lastScorePercent = scorePercent;
   analytics.quizStats[quizKey] = decorateQuizStat(quizStat);

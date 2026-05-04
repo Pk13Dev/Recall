@@ -6,6 +6,7 @@ export const quizState = {
   selectedIndex: null,
   score: 0,
   hasAnswered: false,
+  submitCurrentAnswer: null,
   activeSession: null,
   questionStartedAt: 0
 };

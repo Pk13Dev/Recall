@@ -1,4 +1,4 @@
-import { createDefaultAnalyticsModel, createDefaultBehaviorStats, decorateQuestionStat, decorateQuizStat, getConsistencyFromStdDev, getRegressionSlope, getStdDevFromMoments, getVarianceFromMoments } from "./analytics-model.js";
+import { createDefaultAnalyticsModel, createDefaultBehaviorStats, createDefaultFibStats, decorateFibStats, decorateQuestionStat, decorateQuizStat, getConsistencyFromStdDev, getRegressionSlope, getStdDevFromMoments, getVarianceFromMoments } from "./analytics-model.js";
 import { ANALYTICS_ROLLING_WINDOW } from "../core/constants.js";
 import { libraryRuntime } from "../core/state.js";
 import { safeDivide } from "../core/utils.js";
@@ -87,6 +87,20 @@ export function getAnalyticsSnapshot() {
         return rightWrong - leftWrong;
       }
 
+      return (Number(right.lastAnsweredAt) || 0) - (Number(left.lastAnsweredAt) || 0);
+    });
+  const fibStats = decorateFibStats(analytics.fibStats || createDefaultFibStats());
+  const fibQuestionStats = questionStats
+    .filter((stat) => (Number(stat.fibAttempts) || 0) > 0)
+    .sort((left, right) => {
+      const firstWrongGap = (Number(right.fibFirstTryWrong) || 0) - (Number(left.fibFirstTryWrong) || 0);
+      if (firstWrongGap !== 0) {
+        return firstWrongGap;
+      }
+      const secondWrongGap = (Number(right.fibSecondTryWrong) || 0) - (Number(left.fibSecondTryWrong) || 0);
+      if (secondWrongGap !== 0) {
+        return secondWrongGap;
+      }
       return (Number(right.lastAnsweredAt) || 0) - (Number(left.lastAnsweredAt) || 0);
     });
   const libraryQuizzes = Object.values((libraryRuntime.model && libraryRuntime.model.quizzes) || {})
@@ -208,6 +222,9 @@ export function getAnalyticsSnapshot() {
       guessRate,
       slowErrorRate,
       fastCorrectRate,
+      fibFirstTryAccuracy: fibStats.firstTryAccuracy,
+      fibSecondTryAccuracy: fibStats.secondTryAccuracy,
+      fibSecondTryFixRate: fibStats.secondTryFixRate,
       currentStreak: Number(analytics.streakStats.currentCorrectStreak) || 0,
       bestStreak: Number(analytics.streakStats.bestCorrectStreak) || 0
     },
@@ -228,6 +245,9 @@ export function getAnalyticsSnapshot() {
     },
     dailyMetrics,
     topicMetrics,
+    fibStats,
+    fibQuestionStats,
+    topFibTroubleQuestions: fibQuestionStats.slice(0, 4),
     trendSeries,
     recentSessions,
     recentAnswers,

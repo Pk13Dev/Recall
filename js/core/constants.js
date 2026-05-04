@@ -24,6 +24,36 @@ export const demoQuizData = {
       options: ["undefined", "function", "symbol", "string", "bigint"],
       correctIndex: 3
     }
+  ],
+  fillInTheBlanks: [
+    {
+      id: "fib-demo-1",
+      title: "JSON structure",
+      paragraph: "JSON stores data in {{b1}} pairs, arrays use {{b2}}, and strings must be wrapped in {{b3}}.",
+      maxBlanks: 3,
+      selectionMode: "ordered",
+      baitWords: ["parentheses"],
+      blanks: [
+        {
+          id: "b1",
+          answer: "key-value",
+          acceptedAnswers: ["key-value", "key value"],
+          hint: "The name and value pattern"
+        },
+        {
+          id: "b2",
+          answer: "square brackets",
+          acceptedAnswers: ["square brackets", "brackets"],
+          hint: "Array delimiters"
+        },
+        {
+          id: "b3",
+          answer: "double quotes",
+          acceptedAnswers: ["double quotes", "quotes"],
+          hint: "String delimiters"
+        }
+      ]
+    }
   ]
 };
 
@@ -41,13 +71,15 @@ export const MIN_OPTIONS_PER_QUESTION = 4;
 
 export const MAX_OPTIONS_PER_QUESTION = 17;
 
-export const THEMES = ["light", "dark", "neon", "vibrant"];
+export const THEMES = ["light", "dark", "neon", "vibrant", "retro", "aero-frutiger"];
 
 export const THEME_LABELS = {
   light: "Light",
   dark: "Dark",
   neon: "Neon",
-  vibrant: "Vibrant"
+  vibrant: "Vibrant",
+  retro: "Retro",
+  "aero-frutiger": "Frutiger Aero"
 };
 
 export const ROOT_LIBRARY_LABEL = "Library";

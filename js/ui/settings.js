@@ -30,7 +30,7 @@ export function setTheme(themeName, shouldPersist) {
   const nextTheme = isValidTheme(themeName) ? themeName : DEFAULT_THEME;
   libraryRuntime.activeTheme = nextTheme;
 
-  document.body.classList.remove("theme-light", "theme-dark", "theme-neon", "theme-vibrant");
+  document.body.classList.remove("theme-light", "theme-dark", "theme-neon", "theme-vibrant", "theme-retro", "theme-aero-frutiger");
   document.body.classList.add(`theme-${nextTheme}`);
   elements.themeValue.textContent = formatThemeName(nextTheme);
 

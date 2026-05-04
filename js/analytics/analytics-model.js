@@ -36,6 +36,26 @@ export function createDefaultDropoffStats() {
   return { sessionsTracked: 0, totalDropoff: 0 };
 }
 
+export function createDefaultFibStats() {
+  return {
+    questionsAnswered: 0,
+    questionsSolvedFirstTry: 0,
+    questionsSolvedSecondTry: 0,
+    questionsMissedAfterSecondTry: 0,
+    secondTryQuestions: 0,
+    firstTryBlanks: 0,
+    firstTryCorrect: 0,
+    firstTryWrong: 0,
+    secondTryBlanks: 0,
+    secondTryCorrect: 0,
+    secondTryWrong: 0,
+    secondTryImproved: 0,
+    misplacedCount: 0,
+    baitCount: 0,
+    missingCount: 0
+  };
+}
+
 export function createDefaultTopicEntry(label) {
   return {
     label: label || "Unknown",
@@ -151,6 +171,93 @@ export function calculateQuestionMastery(accuracyRatio, averageTimeMs) {
   return safeDivide(accuracy, denominator, null);
 }
 
+export function normalizeFibAttemptSummary(rawAttempt, index) {
+  const attempt = rawAttempt && typeof rawAttempt === "object" && !Array.isArray(rawAttempt) ? rawAttempt : {};
+  const totalBlanks = Math.max(Number(attempt.totalBlanks) || 0, 0);
+  const correctCount = Math.max(Number(attempt.correctCount) || 0, 0);
+  const wrongCount = Math.max(
+    Number(attempt.wrongCount) || Math.max(totalBlanks - correctCount, 0),
+    0
+  );
+  const results = Array.isArray(attempt.results)
+    ? attempt.results
+        .filter((result) => result && typeof result === "object" && !Array.isArray(result))
+        .map((result) => ({
+          blankId: result.blankId !== undefined && result.blankId !== null ? String(result.blankId) : "",
+          selectedAnswer: typeof result.selectedAnswer === "string" ? result.selectedAnswer : "",
+          correctAnswer: typeof result.correctAnswer === "string" ? result.correctAnswer : "",
+          status: typeof result.status === "string" ? result.status : "",
+          isCorrect: Boolean(result.isCorrect)
+        }))
+    : [];
+
+  return {
+    attemptNumber: Number.isInteger(Number(attempt.attemptNumber)) ? Math.max(Number(attempt.attemptNumber), 1) : index + 1,
+    totalBlanks,
+    correctCount,
+    wrongCount,
+    misplacedCount: Math.max(Number(attempt.misplacedCount) || 0, 0),
+    baitCount: Math.max(Number(attempt.baitCount) || 0, 0),
+    missingCount: Math.max(Number(attempt.missingCount) || 0, 0),
+    isCorrect: Boolean(attempt.isCorrect || (totalBlanks > 0 && correctCount >= totalBlanks)),
+    results
+  };
+}
+
+export function summarizeFibAttempts(rawAttempts) {
+  const attempts = Array.isArray(rawAttempts)
+    ? rawAttempts.map(normalizeFibAttemptSummary).filter((attempt) => attempt.totalBlanks > 0)
+    : [];
+  const firstAttempt = attempts[0] || null;
+  const secondAttempt = attempts[1] || null;
+  const firstTryCorrect = firstAttempt ? firstAttempt.correctCount : 0;
+  const secondTryCorrect = secondAttempt ? secondAttempt.correctCount : 0;
+
+  return {
+    attempts,
+    questionsAnswered: firstAttempt ? 1 : 0,
+    questionsSolvedFirstTry: firstAttempt && firstAttempt.isCorrect ? 1 : 0,
+    questionsSolvedSecondTry: firstAttempt && !firstAttempt.isCorrect && secondAttempt && secondAttempt.isCorrect ? 1 : 0,
+    questionsMissedAfterSecondTry: firstAttempt && !firstAttempt.isCorrect && (!secondAttempt || !secondAttempt.isCorrect) ? 1 : 0,
+    secondTryQuestions: secondAttempt ? 1 : 0,
+    firstTryBlanks: firstAttempt ? firstAttempt.totalBlanks : 0,
+    firstTryCorrect,
+    firstTryWrong: firstAttempt ? firstAttempt.wrongCount : 0,
+    secondTryBlanks: secondAttempt ? secondAttempt.totalBlanks : 0,
+    secondTryCorrect,
+    secondTryWrong: secondAttempt ? secondAttempt.wrongCount : 0,
+    secondTryImproved: secondAttempt ? Math.max(secondTryCorrect - firstTryCorrect, 0) : 0,
+    misplacedCount: attempts.reduce((sum, attempt) => sum + attempt.misplacedCount, 0),
+    baitCount: attempts.reduce((sum, attempt) => sum + attempt.baitCount, 0),
+    missingCount: attempts.reduce((sum, attempt) => sum + attempt.missingCount, 0)
+  };
+}
+
+export function accumulateFibStats(targetStats, sourceStats) {
+  const target = targetStats || createDefaultFibStats();
+  const source = sourceStats || createDefaultFibStats();
+  Object.keys(createDefaultFibStats()).forEach((key) => {
+    target[key] = (Number(target[key]) || 0) + (Number(source[key]) || 0);
+  });
+  return target;
+}
+
+export function decorateFibStats(rawStats) {
+  const stats = {
+    ...createDefaultFibStats(),
+    ...(rawStats && typeof rawStats === "object" && !Array.isArray(rawStats) ? rawStats : {})
+  };
+  Object.keys(createDefaultFibStats()).forEach((key) => {
+    stats[key] = Number(stats[key]) || 0;
+  });
+  stats.firstTryAccuracy = safeDivide(stats.firstTryCorrect, stats.firstTryBlanks, null);
+  stats.secondTryAccuracy = safeDivide(stats.secondTryCorrect, stats.secondTryBlanks, null);
+  stats.secondTryUseRate = safeDivide(stats.secondTryQuestions, stats.questionsAnswered, null);
+  stats.secondTryFixRate = safeDivide(stats.questionsSolvedSecondTry, stats.secondTryQuestions, null);
+  stats.secondTryBlankFixRate = safeDivide(stats.secondTryImproved, stats.secondTryBlanks, null);
+  return stats;
+}
+
 export function calculateHalfAccuracy(answers, startIndex, endIndex) {
   const subset = answers.slice(startIndex, endIndex);
   if (!subset.length) {
@@ -237,6 +344,24 @@ export function decorateQuestionStat(rawStat) {
   stat.fastWrongCount = Number(stat.fastWrongCount) || 0;
   stat.slowWrongCount = Number(stat.slowWrongCount) || 0;
   stat.fastCorrectCount = Number(stat.fastCorrectCount) || 0;
+  stat.fibAttempts = Number(stat.fibAttempts) || 0;
+  stat.fibQuestionsSolvedFirstTry = Number(stat.fibQuestionsSolvedFirstTry) || 0;
+  stat.fibQuestionsSolvedSecondTry = Number(stat.fibQuestionsSolvedSecondTry) || 0;
+  stat.fibQuestionsMissedAfterSecondTry = Number(stat.fibQuestionsMissedAfterSecondTry) || 0;
+  stat.fibSecondTryQuestions = Number(stat.fibSecondTryQuestions) || 0;
+  stat.fibFirstTryBlanks = Number(stat.fibFirstTryBlanks) || 0;
+  stat.fibFirstTryCorrect = Number(stat.fibFirstTryCorrect) || 0;
+  stat.fibFirstTryWrong = Number(stat.fibFirstTryWrong) || 0;
+  stat.fibSecondTryBlanks = Number(stat.fibSecondTryBlanks) || 0;
+  stat.fibSecondTryCorrect = Number(stat.fibSecondTryCorrect) || 0;
+  stat.fibSecondTryWrong = Number(stat.fibSecondTryWrong) || 0;
+  stat.fibSecondTryImproved = Number(stat.fibSecondTryImproved) || 0;
+  stat.fibMisplacedCount = Number(stat.fibMisplacedCount) || 0;
+  stat.fibBaitCount = Number(stat.fibBaitCount) || 0;
+  stat.fibMissingCount = Number(stat.fibMissingCount) || 0;
+  stat.fibFirstTryAccuracy = safeDivide(stat.fibFirstTryCorrect, stat.fibFirstTryBlanks, null);
+  stat.fibSecondTryAccuracy = safeDivide(stat.fibSecondTryCorrect, stat.fibSecondTryBlanks, null);
+  stat.fibSecondTryFixRate = safeDivide(stat.fibQuestionsSolvedSecondTry, stat.fibSecondTryQuestions, null);
   stat.questionAccuracy = safeDivide(stat.correctCount, stat.attempts, null);
   stat.difficulty = stat.attempts ? 1 - stat.questionAccuracy : null;
   stat.errorRate = safeDivide(stat.wrongCount, stat.attempts, null);
@@ -277,6 +402,7 @@ export function decorateQuizStat(rawStat) {
   stat.timePerCorrectMs = Number.isFinite(Number(stat.timePerCorrectMs))
     ? Number(stat.timePerCorrectMs)
     : safeDivide(stat.totalTimeMs, stat.totalCorrect, null);
+  stat.fibStats = decorateFibStats(stat.fibStats);
   return stat;
 }
 
@@ -300,6 +426,7 @@ export function createDefaultAnalyticsModel() {
     trendRegression: createDefaultTrendRegression(),
     streakStats: createDefaultStreakStats(),
     dropoffStats: createDefaultDropoffStats(),
+    fibStats: createDefaultFibStats(),
     topicStats: {
       byFolder: {},
       byQuizKind: {}
@@ -316,6 +443,7 @@ export function seedAnalyticsFromHistory(analytics) {
   const shouldSeedTopics =
     !Object.keys(analytics.topicStats.byFolder).length && !Object.keys(analytics.topicStats.byQuizKind).length;
   const shouldSeedDropoff = (Number(analytics.dropoffStats.sessionsTracked) || 0) <= 0;
+  const shouldSeedFib = (Number(analytics.fibStats.questionsAnswered) || 0) <= 0;
   const answersAscending = analytics.recentAnswers
     .slice()
     .sort((left, right) => (Number(left.answeredAt) || 0) - (Number(right.answeredAt) || 0));
@@ -348,6 +476,10 @@ export function seedAnalyticsFromHistory(analytics) {
         bestStreak = Math.max(bestStreak, currentStreak);
       } else {
         currentStreak = 0;
+      }
+
+      if (shouldSeedFib) {
+        accumulateFibStats(analytics.fibStats, summarizeFibAttempts(answer.fibAttempts));
       }
     });
     if (shouldSeedStreak) {
@@ -441,7 +573,8 @@ export function normalizeAnalyticsModel(rawAnalytics) {
         scoreDelta: Number.isFinite(Number(entry.scoreDelta)) ? Number(entry.scoreDelta) : null,
         firstHalfAccuracy: Number.isFinite(Number(entry.firstHalfAccuracy)) ? Number(entry.firstHalfAccuracy) : null,
         secondHalfAccuracy: Number.isFinite(Number(entry.secondHalfAccuracy)) ? Number(entry.secondHalfAccuracy) : null,
-        dropoffRate: Number.isFinite(Number(entry.dropoffRate)) ? Number(entry.dropoffRate) : null
+        dropoffRate: Number.isFinite(Number(entry.dropoffRate)) ? Number(entry.dropoffRate) : null,
+        fibStats: decorateFibStats(entry.fibStats)
       }))
       .slice(0, MAX_RECENT_ANALYTIC_SESSIONS);
   }
@@ -449,12 +582,25 @@ export function normalizeAnalyticsModel(rawAnalytics) {
   if (Array.isArray(rawAnalytics.recentAnswers)) {
     analytics.recentAnswers = rawAnalytics.recentAnswers
       .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
-      .map((entry) => ({
-        ...entry,
-        answeredAt: Number(entry.answeredAt) || 0,
-        elapsedMs: Number(entry.elapsedMs) || 0,
-        isCorrect: Boolean(entry.isCorrect)
-      }))
+      .map((entry) => {
+        const fibSummary = summarizeFibAttempts(entry.fibAttempts);
+        return {
+          ...entry,
+          answeredAt: Number(entry.answeredAt) || 0,
+          elapsedMs: Number(entry.elapsedMs) || 0,
+          attemptCount: Number(entry.attemptCount) || 1,
+          fibAttempts: fibSummary.attempts,
+          fibFirstTryCorrectCount: Number(entry.fibFirstTryCorrectCount) || fibSummary.firstTryCorrect,
+          fibFirstTryWrongCount: Number(entry.fibFirstTryWrongCount) || fibSummary.firstTryWrong,
+          fibSecondTryCorrectCount: Number(entry.fibSecondTryCorrectCount) || fibSummary.secondTryCorrect,
+          fibSecondTryWrongCount: Number(entry.fibSecondTryWrongCount) || fibSummary.secondTryWrong,
+          fibSecondTryImprovedCount: Number(entry.fibSecondTryImprovedCount) || fibSummary.secondTryImproved,
+          fibMisplacedCount: Number(entry.fibMisplacedCount) || fibSummary.misplacedCount,
+          fibBaitCount: Number(entry.fibBaitCount) || fibSummary.baitCount,
+          fibMissingCount: Number(entry.fibMissingCount) || fibSummary.missingCount,
+          isCorrect: Boolean(entry.isCorrect)
+        };
+      })
       .slice(0, MAX_RECENT_ANALYTIC_ANSWERS);
   }
 
@@ -523,6 +669,10 @@ export function normalizeAnalyticsModel(rawAnalytics) {
   if (rawAnalytics.dropoffStats && typeof rawAnalytics.dropoffStats === "object" && !Array.isArray(rawAnalytics.dropoffStats)) {
     analytics.dropoffStats.sessionsTracked = Number(rawAnalytics.dropoffStats.sessionsTracked) || 0;
     analytics.dropoffStats.totalDropoff = Number(rawAnalytics.dropoffStats.totalDropoff) || 0;
+  }
+
+  if (rawAnalytics.fibStats && typeof rawAnalytics.fibStats === "object" && !Array.isArray(rawAnalytics.fibStats)) {
+    analytics.fibStats = decorateFibStats(rawAnalytics.fibStats);
   }
 
   if (rawAnalytics.topicStats && typeof rawAnalytics.topicStats === "object" && !Array.isArray(rawAnalytics.topicStats)) {

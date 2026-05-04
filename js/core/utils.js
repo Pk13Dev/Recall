@@ -92,12 +92,42 @@ export function getQuestionSourceMetadata(question) {
   return metadata;
 }
 
-export function cloneQuestions(questions) {
-  return questions.map((question) => ({
+export function normalizeComparableText(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function cloneQuestion(question) {
+  if (question && question.type === "fib") {
+    return {
+      id: question.id,
+      type: "fib",
+      question: question.question,
+      title: question.title,
+      paragraph: question.paragraph,
+      maxBlanks: question.maxBlanks,
+      selectionMode: question.selectionMode,
+      blanks: question.blanks.map((blank) => ({
+        id: blank.id,
+        answer: blank.answer,
+        acceptedAnswers: [...blank.acceptedAnswers],
+        hint: blank.hint
+      })),
+      wordBank: [...question.wordBank],
+      baitWords: [...question.baitWords],
+      ...getQuestionSourceMetadata(question)
+    };
+  }
+
+  return {
     id: question.id,
+    type: question.type || "multiple-choice",
     question: question.question,
     options: [...question.options],
     correctIndex: question.correctIndex,
     ...getQuestionSourceMetadata(question)
-  }));
+  };
+}
+
+export function cloneQuestions(questions) {
+  return questions.map(cloneQuestion);
 }
