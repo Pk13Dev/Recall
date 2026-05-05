@@ -143,6 +143,13 @@ export function normalizeFillInTheBlank(rawQuestion, index) {
     };
   });
 
+  const unknownPlaceholder = Array.from(paragraph.matchAll(/\{\{([^}]+)\}\}/g))
+    .map((match) => match[1].trim())
+    .find((blankId) => !seenBlankIds.has(blankId));
+  if (unknownPlaceholder) {
+    throw new Error(`${questionLabel} paragraph includes unknown placeholder {{${unknownPlaceholder}}}.`);
+  }
+
   const maxBlanks = Number.isInteger(rawQuestion.maxBlanks) && rawQuestion.maxBlanks > 0
     ? Math.min(rawQuestion.maxBlanks, blanks.length)
     : blanks.length;

@@ -12,32 +12,6 @@
       <div class="top-controls">
         <div class="sound-control">
           <button
-            id="theme-toggle-btn"
-            class="sound-toggle-btn"
-            type="button"
-            aria-expanded="false"
-            aria-controls="theme-popup"
-            aria-label="Change website theme"
-          >
-            Theme
-          </button>
-          <div id="theme-popup" class="sound-popup" role="dialog" aria-label="Theme picker">
-            <div class="sound-popup-header">
-              <span class="sound-popup-title">Theme</span>
-              <span id="theme-value" class="volume-value">Light</span>
-            </div>
-            <div id="theme-options" class="theme-options" role="list">
-              <button type="button" class="theme-option-btn" data-theme="light">Light</button>
-              <button type="button" class="theme-option-btn" data-theme="dark">Dark</button>
-              <button type="button" class="theme-option-btn" data-theme="neon">Neon</button>
-              <button type="button" class="theme-option-btn" data-theme="vibrant">Vibrant</button>
-              <button type="button" class="theme-option-btn" data-theme="retro">Retro</button>
-              <button type="button" class="theme-option-btn" data-theme="aero-frutiger">Frutiger Aero</button>
-            </div>
-          </div>
-        </div>
-        <div class="sound-control">
-          <button
             id="analytics-open-btn"
             class="sound-toggle-btn"
             type="button"
@@ -56,62 +30,15 @@
             Guide
           </button>
         </div>
-        <div class="sound-control">
+        <div class="sound-control settings-control">
           <button
-            id="sound-toggle-btn"
+            id="settings-open-btn"
             class="sound-toggle-btn"
             type="button"
-            aria-expanded="false"
-            aria-controls="sound-popup"
-            aria-label="Adjust notification volume"
+            aria-label="Open settings"
           >
-            Sound
+            Settings
           </button>
-          <div id="sound-popup" class="sound-popup" role="dialog" aria-label="Notification volume">
-            <div class="sound-popup-header">
-              <span class="sound-popup-title">Volume</span>
-              <span id="volume-value" class="volume-value">75%</span>
-            </div>
-            <input
-              id="volume-control"
-              class="volume-control volume-control-mini"
-              type="range"
-              min="0"
-              max="100"
-              value="75"
-              step="1"
-              aria-label="Notification volume"
-            />
-          </div>
-        </div>
-        <div class="sound-control">
-          <button
-            id="goal-toggle-btn"
-            class="sound-toggle-btn"
-            type="button"
-            aria-expanded="false"
-            aria-controls="goal-popup"
-            aria-label="Adjust score goal"
-          >
-            Goal
-          </button>
-          <div id="goal-popup" class="sound-popup" role="dialog" aria-label="Score goal">
-            <div class="sound-popup-header">
-              <span class="sound-popup-title">Goal</span>
-              <span id="goal-value" class="volume-value">70%</span>
-            </div>
-            <input
-              id="goal-control"
-              class="volume-control volume-control-mini"
-              type="range"
-              min="0"
-              max="100"
-              value="70"
-              step="1"
-              aria-label="Score goal percentage"
-            />
-            <p class="popup-helper-text">Used for result sounds and goal-based analytics.</p>
-          </div>
         </div>
       </div>
       <p class="eyebrow">Study Better</p>
@@ -166,6 +93,7 @@
               </div>
             </div>
           </div>
+          <button id="create-quiz-btn" class="btn btn-secondary btn-compact create-quiz-btn" type="button">Create Quizz</button>
           <nav id="library-breadcrumb" class="library-breadcrumb" aria-label="Library path"></nav>
           <section id="library-editor" class="library-editor" hidden aria-live="polite">
             <div class="library-editor-copy">
@@ -195,6 +123,110 @@
 
         <p id="error-message" class="error-message" role="alert" aria-live="polite"></p>
       </div>
+    </section>
+
+    <section id="creator-screen" class="screen" aria-labelledby="creator-title">
+      <section class="card quiz-creator-card">
+        <div class="quiz-creator-header">
+          <div class="quiz-creator-copy">
+            <p class="quiz-creator-kicker">Quiz Builder</p>
+            <h2 id="creator-title">Create Quiz JSON</h2>
+            <p class="screen-copy">Build multiple-choice or fill-in-the-blank questions, then save the quiz to this folder or export the JSON.</p>
+          </div>
+          <div class="quiz-creator-actions">
+            <button id="creator-export-btn" class="btn btn-secondary btn-compact" type="button">Export JSON</button>
+            <button id="creator-save-btn" class="btn btn-primary btn-compact" type="button">Save</button>
+          </div>
+        </div>
+
+        <label class="quiz-creator-field">
+          <span class="library-field-label">Quiz name</span>
+          <input
+            id="creator-name-input"
+            class="library-input"
+            type="text"
+            maxlength="80"
+            value="New Quiz"
+            autocomplete="off"
+          />
+        </label>
+
+        <div id="creator-question-list" class="quiz-creator-question-list" aria-live="polite"></div>
+
+        <div class="quiz-creator-add-row">
+          <button id="creator-add-question-btn" class="btn btn-secondary btn-compact" type="button">Add Question</button>
+        </div>
+
+        <p id="creator-status" class="quiz-creator-status" role="status" aria-live="polite"></p>
+      </section>
+    </section>
+
+    <section id="settings-screen" class="screen" aria-labelledby="settings-title">
+      <section class="card settings-card">
+        <div class="settings-header">
+          <div class="settings-copy">
+            <p class="settings-kicker">Settings</p>
+            <h2 id="settings-title">App Settings</h2>
+            <p class="screen-copy">Theme, notification sound volume, and score goal live here.</p>
+          </div>
+          <button id="settings-back-btn" class="btn btn-secondary btn-compact" type="button">Back</button>
+        </div>
+
+        <div class="settings-grid">
+          <section class="settings-panel" aria-labelledby="settings-theme-title">
+            <div class="settings-panel-header">
+              <p class="settings-panel-kicker">Theme</p>
+              <h3 id="settings-theme-title">Theme</h3>
+              <span id="theme-value" class="volume-value">Light</span>
+            </div>
+            <div id="theme-options" class="theme-options settings-theme-options" role="list">
+              <button type="button" class="theme-option-btn" data-theme="light">Light</button>
+              <button type="button" class="theme-option-btn" data-theme="dark">Dark</button>
+              <button type="button" class="theme-option-btn" data-theme="neon">Neon</button>
+              <button type="button" class="theme-option-btn" data-theme="vibrant">Vibrant</button>
+              <button type="button" class="theme-option-btn" data-theme="retro">Retro</button>
+              <button type="button" class="theme-option-btn" data-theme="aero-frutiger">Frutiger Aero</button>
+            </div>
+          </section>
+
+          <section class="settings-panel" aria-labelledby="settings-sound-title">
+            <div class="settings-panel-header">
+              <p class="settings-panel-kicker">Sound</p>
+              <h3 id="settings-sound-title">Notification Volume</h3>
+              <span id="volume-value" class="volume-value">75%</span>
+            </div>
+            <input
+              id="volume-control"
+              class="volume-control settings-range"
+              type="range"
+              min="0"
+              max="100"
+              value="75"
+              step="1"
+              aria-label="Notification volume"
+            />
+          </section>
+
+          <section class="settings-panel" aria-labelledby="settings-goal-title">
+            <div class="settings-panel-header">
+              <p class="settings-panel-kicker">Goal</p>
+              <h3 id="settings-goal-title">Score Goal</h3>
+              <span id="goal-value" class="volume-value">70%</span>
+            </div>
+            <input
+              id="goal-control"
+              class="volume-control settings-range"
+              type="range"
+              min="0"
+              max="100"
+              value="70"
+              step="1"
+              aria-label="Score goal percentage"
+            />
+            <p class="settings-helper-text">Used for result sounds and goal-based analytics.</p>
+          </section>
+        </div>
+      </section>
     </section>
 
     <section id="quiz-screen" class="screen" aria-labelledby="question-text">

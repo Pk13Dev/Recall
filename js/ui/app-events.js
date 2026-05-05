@@ -12,9 +12,10 @@ import { refreshLibraryUI } from "../library/library-renderer.js";
 import { nextQuestion, startQuiz } from "../quiz/quiz-runtime.js";
 import { validateQuizData } from "../quiz/quiz-validation.js";
 import { initializeLibraryStorage } from "../storage/storage.js";
+import { initializeQuizCreatorEvents } from "../creator/quiz-creator-events.js";
 import { initializeAudioUnlockEvents } from "./audio.js";
 import { closeGuideScreen, goToMainMenu, openGuideScreen } from "./navigation.js";
-import { closeAllMiniPopups, handleGlobalPopupClose, repositionOpenMiniPopups, setGoalPopupOpen, setSoundPopupOpen, setThemePopupOpen } from "./popups.js";
+import { closeAllMiniPopups, handleGlobalPopupClose } from "./popups.js";
 import { setGoalPercent, setNotificationVolume, setTheme, updateLibraryNote } from "./settings.js";
 import { initializeUploadEvents } from "./upload-events.js";
 
@@ -42,11 +43,20 @@ export function initializeActionEvents() {
   elements.overviewFolderBtn.addEventListener("click", createOverviewForCurrentFolder);
   elements.analyticsOpenBtn.addEventListener("click", openAnalyticsScreen);
   elements.guideOpenBtn.addEventListener("click", openGuideScreen);
+  elements.settingsOpenBtn.addEventListener("click", function () {
+    closeLibraryEditor();
+    closeAllMiniPopups();
+    showScreen("settings");
+  });
   elements.resultsAnalyticsBtn.addEventListener("click", openAnalyticsScreen);
   elements.analyticsBackBtn.addEventListener("click", function () {
     showScreen("upload");
   });
   elements.guideBackBtn.addEventListener("click", closeGuideScreen);
+  elements.settingsBackBtn.addEventListener("click", function () {
+    closeAllMiniPopups();
+    showScreen(libraryRuntime.lastNonSettingsScreen || "upload");
+  });
   elements.newFolderBtn.addEventListener("click", createFolder);
   elements.upFolderBtn.addEventListener("click", goUpOneFolder);
   elements.libraryEditorSaveBtn.addEventListener("click", saveLibraryEditor);
@@ -92,15 +102,6 @@ export function initializeActionEvents() {
     setGoalPercent(percent, true);
   });
 
-  elements.themeToggleBtn.addEventListener("click", function () {
-    const isOpen = elements.themePopup.classList.contains("is-open");
-    setThemePopupOpen(!isOpen);
-    if (!isOpen) {
-      setSoundPopupOpen(false);
-      setGoalPopupOpen(false);
-    }
-  });
-
   elements.themeOptions.addEventListener("click", function (event) {
     if (!(event.target instanceof Element)) {
       return;
@@ -114,30 +115,9 @@ export function initializeActionEvents() {
       return;
     }
     setTheme(themeName, true);
-    setThemePopupOpen(false);
-  });
-
-  elements.soundToggleBtn.addEventListener("click", function () {
-    const isOpen = elements.soundPopup.classList.contains("is-open");
-    setSoundPopupOpen(!isOpen);
-    if (!isOpen) {
-      setThemePopupOpen(false);
-      setGoalPopupOpen(false);
-    }
-  });
-
-  elements.goalToggleBtn.addEventListener("click", function () {
-    const isOpen = elements.goalPopup.classList.contains("is-open");
-    setGoalPopupOpen(!isOpen);
-    if (!isOpen) {
-      setSoundPopupOpen(false);
-      setThemePopupOpen(false);
-    }
   });
 
   document.addEventListener("click", handleGlobalPopupClose);
-  window.addEventListener("resize", repositionOpenMiniPopups);
-  window.addEventListener("scroll", repositionOpenMiniPopups, { passive: true });
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
       closeAllMiniPopups();
@@ -151,6 +131,7 @@ export async function initializeApp() {
   initializeAudioUnlockEvents();
   initializeUploadEvents();
   initializeActionEvents();
+  initializeQuizCreatorEvents();
   showScreen("upload");
   setTheme(DEFAULT_THEME, false);
   closeAllMiniPopups();
