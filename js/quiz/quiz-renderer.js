@@ -129,7 +129,7 @@ export function renderFillInBlankQuestion(currentQuestion) {
     hintButton.onclick = null;
     hintButton.hidden = !hasQuestionHints;
     hintButton.disabled = !hasQuestionHints;
-    hintButton.textContent = "Hint";
+    hintButton.textContent = "Hint?";
     hintButton.classList.remove("is-active");
     hintButton.setAttribute("aria-pressed", "false");
     actionRow.classList.toggle("has-hint", hasQuestionHints);
@@ -140,11 +140,9 @@ export function renderFillInBlankQuestion(currentQuestion) {
     }
 
     hintButton.onclick = function () {
-      const shouldEnableHints = !wrapper.classList.contains("is-hinting");
-      wrapper.classList.toggle("is-hinting", shouldEnableHints);
-      hintButton.textContent = shouldEnableHints ? "Hide Hint" : "Hint";
-      hintButton.classList.toggle("is-active", shouldEnableHints);
-      hintButton.setAttribute("aria-pressed", shouldEnableHints ? "true" : "false");
+      wrapper.classList.add("is-hinting");
+      hintButton.classList.add("is-active");
+      hintButton.setAttribute("aria-pressed", "true");
     };
   }
 
@@ -185,9 +183,16 @@ export function renderFillInBlankQuestion(currentQuestion) {
   function moveWordToBank(wordId) {
     const currentBlankId = getFilledBlankIdForWord(wordId);
     if (currentBlankId) {
+      if (state.lockedBlankIds.has(currentBlankId)) {
+        return false;
+      }
       state.placements.delete(currentBlankId);
     }
-    bankGrid.appendChild(getWordElement(wordId));
+    const wordElement = getWordElement(wordId);
+    if (wordElement) {
+      bankGrid.appendChild(wordElement);
+    }
+    return true;
   }
 
   function placeWordInBlank(wordId, blankId) {
@@ -201,21 +206,20 @@ export function renderFillInBlankQuestion(currentQuestion) {
       return;
     }
 
-    clearSubmittedFeedback();
-
     const previousBlankId = getFilledBlankIdForWord(wordId);
     const existingWordId = state.placements.get(blankId);
-    if (previousBlankId) {
-      state.placements.delete(previousBlankId);
+    if (previousBlankId && state.lockedBlankIds.has(previousBlankId)) {
+      return;
     }
 
     if (existingWordId && existingWordId !== wordId) {
-      if (previousBlankId && previousBlankId !== blankId && !state.lockedBlankIds.has(previousBlankId)) {
-        state.placements.set(previousBlankId, existingWordId);
-        getBlankElement(previousBlankId).appendChild(getWordElement(existingWordId));
-      } else {
-        moveWordToBank(existingWordId);
-      }
+      return;
+    }
+
+    clearSubmittedFeedback();
+
+    if (previousBlankId) {
+      state.placements.delete(previousBlankId);
     }
 
     state.placements.set(blankId, wordId);
@@ -374,10 +378,9 @@ export function renderFillInBlankQuestion(currentQuestion) {
     if (isCorrect) {
       quizState.score += 1;
       playSound("win");
-      const firstCorrectBlank = wrapper.querySelector(".fib-blank.is-correct");
-      if (firstCorrectBlank) {
-        triggerFireworks(firstCorrectBlank);
-      }
+      Array.from(wrapper.querySelectorAll(".fib-blank.is-correct")).forEach((blankElement, index) => {
+        window.setTimeout(() => triggerFireworks(blankElement), index * 90);
+      });
     } else {
       playSound("fail");
     }
@@ -721,7 +724,7 @@ export function renderQuestion() {
   if (elements.hintBtn) {
     elements.hintBtn.hidden = true;
     elements.hintBtn.disabled = true;
-    elements.hintBtn.textContent = "Hint";
+    elements.hintBtn.textContent = "Hint?";
     elements.hintBtn.onclick = null;
     elements.hintBtn.classList.remove("is-active");
     elements.hintBtn.setAttribute("aria-pressed", "false");
