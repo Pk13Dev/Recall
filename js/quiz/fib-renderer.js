@@ -1,0 +1,700 @@
+import { recordQuestionAnalytics } from "../analytics/analytics-recording.js";
+import { elements } from "../core/dom.js";
+import { quizState } from "../core/state.js";
+import { appendChildren, createElement } from "../core/utils.js";
+import { playSound } from "../ui/audio.js";
+import { triggerFireworks } from "../ui/effects.js";
+
+const FIB_MAX_ATTEMPTS = 2;
+const TOUCH_DRAG_CLICK_SUPPRESSION_MS = 220;
+const TOUCH_DRAG_START_DISTANCE = 8;
+const SUCCESS_FIREWORK_STAGGER_MS = 90;
+const FIB_FEEDBACK_CLASSES = ["is-correct", "is-misplaced", "is-bait", "is-missing"];
+const FIB_TOUCH_GHOST_RESET_CLASSES = [...FIB_FEEDBACK_CLASSES, "is-placed", "is-locked", "is-touch-origin"];
+
+export function getFillInBlankById(question, blankId) {
+  return question.activeBlanks.find((blank) => blank.id === blankId) || null;
+}
+
+export function getFillInBlankWordById(question, wordId) {
+  return question.wordBank.find((word) => word.id === wordId) || null;
+}
+
+export function getFillInBlankWordStatus(word, blankId) {
+  if (!word || !blankId) {
+    return "missing";
+  }
+
+  if (word.acceptedBlankIds.includes(blankId)) {
+    return "correct";
+  }
+
+  return word.isBait ? "bait" : "misplaced";
+}
+
+export function buildFillInBlankAnswerSummary(question, placements) {
+  return question.activeBlanks
+    .map((blank) => {
+      const word = getFillInBlankWordById(question, placements.get(blank.id));
+      return `${blank.id}: ${word ? word.text : "[empty]"}`;
+    })
+    .join("; ");
+}
+
+export function buildFillInBlankCorrectSummary(question) {
+  return question.activeBlanks.map((blank) => `${blank.id}: ${blank.answer}`).join("; ");
+}
+
+function hasFillInBlankHints(question) {
+  return question.activeBlanks.some((blank) => typeof blank.hint === "string" && blank.hint.trim());
+}
+
+function resetHintButton(wrapper, hasQuestionHints) {
+  const hintButton = elements.hintBtn;
+  const actionRow = hintButton ? hintButton.parentElement : null;
+  if (!hintButton || !actionRow) {
+    return;
+  }
+
+  hintButton.onclick = null;
+  hintButton.hidden = !hasQuestionHints;
+  hintButton.disabled = !hasQuestionHints;
+  hintButton.textContent = "Hint?";
+  hintButton.classList.remove("is-active");
+  hintButton.setAttribute("aria-pressed", "false");
+  actionRow.classList.toggle("has-hint", hasQuestionHints);
+
+  if (wrapper) {
+    wrapper.classList.remove("is-hinting");
+  }
+}
+
+function configureHintButton(wrapper, hasQuestionHints) {
+  resetHintButton(wrapper, hasQuestionHints);
+
+  if (!hasQuestionHints || !elements.hintBtn) {
+    return;
+  }
+
+  elements.hintBtn.onclick = function () {
+    wrapper.classList.add("is-hinting");
+    elements.hintBtn.classList.add("is-active");
+    elements.hintBtn.setAttribute("aria-pressed", "true");
+  };
+}
+
+export function resetQuizHintButton() {
+  resetHintButton(null, false);
+}
+
+export function renderFillInBlankQuestion(currentQuestion) {
+  elements.questionText.textContent = currentQuestion.title || currentQuestion.question;
+  elements.optionsContainer.classList.add("options-container-fib");
+  elements.nextBtn.textContent = "Submit Answer";
+
+  const state = {
+    placements: new Map(),
+    selectedWordId: null,
+    attempts: 0,
+    attemptSummaries: [],
+    finalized: false,
+    lockedBlankIds: new Set(),
+    touchDrag: null,
+    lastTouchDragAt: 0
+  };
+
+  const wrapper = createElement("div", "fib-question");
+  const paragraph = createElement("p", "fib-paragraph");
+  const status = createElement("p", "fib-status");
+  const bank = createElement("div", "fib-bank");
+  const bankGrid = createElement("div", "fib-bank-grid");
+  const wordElementsById = new Map();
+  const blankElementsById = new Map();
+
+  status.setAttribute("aria-live", "polite");
+  bank.setAttribute("aria-label", "Possible answers");
+  bank.appendChild(bankGrid);
+  appendChildren(wrapper, [paragraph, bank, status]);
+  elements.optionsContainer.appendChild(wrapper);
+
+  function getWordElement(wordId) {
+    return wordElementsById.get(wordId) || null;
+  }
+
+  function getBlankElement(blankId) {
+    return blankElementsById.get(blankId) || null;
+  }
+
+  function clearFillInBlankStatus(element) {
+    element.classList.remove(...FIB_FEEDBACK_CLASSES);
+  }
+
+  function setSelectedWord(wordId) {
+    state.selectedWordId = state.selectedWordId === wordId ? null : wordId;
+    updateFillInBlankUi();
+  }
+
+  function clearSubmittedFeedback() {
+    if (state.finalized) {
+      return;
+    }
+
+    wrapper.classList.remove("has-submitted-feedback");
+    wrapper.querySelectorAll(".fib-blank:not(.is-locked), .fib-word:not(.is-locked)").forEach((element) => {
+      clearFillInBlankStatus(element);
+    });
+    status.textContent = "";
+  }
+
+  function getFilledBlankIdForWord(wordId) {
+    for (const [blankId, placedWordId] of state.placements.entries()) {
+      if (placedWordId === wordId) {
+        return blankId;
+      }
+    }
+    return null;
+  }
+
+  function moveWordToBank(wordId) {
+    const currentBlankId = getFilledBlankIdForWord(wordId);
+    if (currentBlankId) {
+      if (state.lockedBlankIds.has(currentBlankId)) {
+        return false;
+      }
+      state.placements.delete(currentBlankId);
+    }
+
+    const wordElement = getWordElement(wordId);
+    if (wordElement) {
+      bankGrid.appendChild(wordElement);
+    }
+    return true;
+  }
+
+  function placeWordInBlank(wordId, blankId) {
+    if (state.finalized || state.lockedBlankIds.has(blankId)) {
+      return;
+    }
+
+    const wordElement = getWordElement(wordId);
+    const blankElement = getBlankElement(blankId);
+    if (!wordElement || !blankElement) {
+      return;
+    }
+
+    const previousBlankId = getFilledBlankIdForWord(wordId);
+    const existingWordId = state.placements.get(blankId);
+    if (previousBlankId && state.lockedBlankIds.has(previousBlankId)) {
+      return;
+    }
+
+    if (existingWordId && existingWordId !== wordId) {
+      return;
+    }
+
+    clearSubmittedFeedback();
+
+    if (previousBlankId) {
+      state.placements.delete(previousBlankId);
+    }
+
+    state.placements.set(blankId, wordId);
+    blankElement.appendChild(wordElement);
+    state.selectedWordId = null;
+    updateFillInBlankUi();
+  }
+
+  function handleBlankAction(blankId) {
+    if (state.finalized || state.lockedBlankIds.has(blankId)) {
+      return;
+    }
+
+    if (state.selectedWordId) {
+      placeWordInBlank(state.selectedWordId, blankId);
+      return;
+    }
+
+    const wordId = state.placements.get(blankId);
+    if (wordId) {
+      setSelectedWord(wordId);
+    }
+  }
+
+  function isReadyToSubmit() {
+    return currentQuestion.activeBlanks.every((blank) => state.placements.has(blank.id));
+  }
+
+  function buildFillInBlankAttemptSummary(attemptNumber) {
+    const results = currentQuestion.activeBlanks.map((blank) => {
+      const word = getFillInBlankWordById(currentQuestion, state.placements.get(blank.id));
+      const statusName = getFillInBlankWordStatus(word, blank.id);
+      return {
+        blankId: blank.id,
+        selectedAnswer: word ? word.text : "",
+        correctAnswer: blank.answer,
+        status: statusName,
+        isCorrect: statusName === "correct"
+      };
+    });
+    const correctCount = results.filter((result) => result.isCorrect).length;
+
+    return {
+      attemptNumber,
+      totalBlanks: results.length,
+      correctCount,
+      wrongCount: Math.max(results.length - correctCount, 0),
+      misplacedCount: results.filter((result) => result.status === "misplaced").length,
+      baitCount: results.filter((result) => result.status === "bait").length,
+      missingCount: results.filter((result) => result.status === "missing").length,
+      isCorrect: correctCount === results.length,
+      results
+    };
+  }
+
+  function updateFillInBlankUi() {
+    currentQuestion.activeBlanks.forEach((blank, blankIndex) => {
+      const blankElement = getBlankElement(blank.id);
+      if (!blankElement) {
+        return;
+      }
+
+      const placedWordId = state.placements.get(blank.id);
+      const placedWord = getFillInBlankWordById(currentQuestion, placedWordId);
+      const isEmpty = !placedWordId;
+      blankElement.classList.toggle("is-empty", isEmpty);
+      blankElement.classList.toggle("is-filled", !isEmpty);
+      blankElement.classList.toggle("is-selected", placedWordId === state.selectedWordId);
+      blankElement.classList.toggle("is-target", Boolean(state.selectedWordId) && !state.finalized);
+      blankElement.classList.toggle("is-locked", state.lockedBlankIds.has(blank.id));
+      blankElement.setAttribute(
+        "aria-label",
+        isEmpty
+          ? `Blank ${blankIndex + 1}${blank.hint ? `, hint: ${blank.hint}` : ""}`
+          : `Blank ${blankIndex + 1}, ${placedWord ? placedWord.text : "filled"}`
+      );
+    });
+
+    currentQuestion.wordBank.forEach((word) => {
+      const wordElement = getWordElement(word.id);
+      if (!wordElement) {
+        return;
+      }
+
+      const filledBlankId = getFilledBlankIdForWord(word.id);
+      const isLocked = filledBlankId && state.lockedBlankIds.has(filledBlankId);
+      wordElement.classList.toggle("is-selected", state.selectedWordId === word.id);
+      wordElement.classList.toggle("is-placed", Boolean(filledBlankId));
+      wordElement.classList.toggle("is-locked", Boolean(isLocked));
+      wordElement.draggable = !state.finalized && !isLocked;
+      wordElement.setAttribute("aria-pressed", state.selectedWordId === word.id ? "true" : "false");
+    });
+
+    elements.nextBtn.disabled = state.finalized ? false : !isReadyToSubmit();
+  }
+
+  function renderFillInBlankFeedback(isFinal) {
+    wrapper.classList.add("has-submitted-feedback");
+    state.lockedBlankIds.clear();
+
+    currentQuestion.activeBlanks.forEach((blank) => {
+      const blankElement = getBlankElement(blank.id);
+      const wordId = state.placements.get(blank.id);
+      const word = getFillInBlankWordById(currentQuestion, wordId);
+      const statusName = getFillInBlankWordStatus(word, blank.id);
+      if (!blankElement) {
+        return;
+      }
+
+      clearFillInBlankStatus(blankElement);
+      blankElement.classList.add(`is-${statusName}`);
+
+      if (statusName === "correct") {
+        state.lockedBlankIds.add(blank.id);
+      }
+    });
+
+    currentQuestion.wordBank.forEach((word) => {
+      const wordElement = getWordElement(word.id);
+      const blankId = getFilledBlankIdForWord(word.id);
+      const statusName = getFillInBlankWordStatus(word, blankId);
+      if (!wordElement) {
+        return;
+      }
+
+      clearFillInBlankStatus(wordElement);
+      if (blankId) {
+        wordElement.classList.add(`is-${statusName}`);
+      }
+    });
+
+    status.textContent = isFinal ? "" : "Try once more.";
+    updateFillInBlankUi();
+  }
+
+  function submitFillInBlankAnswer() {
+    if (state.finalized || !isReadyToSubmit()) {
+      updateFillInBlankUi();
+      return;
+    }
+
+    state.attempts += 1;
+    state.selectedWordId = null;
+    const attemptSummary = buildFillInBlankAttemptSummary(state.attempts);
+    state.attemptSummaries[state.attempts - 1] = attemptSummary;
+    const isCorrect = attemptSummary.isCorrect;
+    const isFinal = isCorrect || state.attempts >= FIB_MAX_ATTEMPTS;
+
+    renderFillInBlankFeedback(isFinal);
+
+    if (!isFinal) {
+      elements.nextBtn.textContent = "Submit Again";
+      playSound("fail");
+      return;
+    }
+
+    state.finalized = true;
+    quizState.hasAnswered = true;
+    quizState.selectedIndex = 0;
+    quizState.submitCurrentAnswer = null;
+    elements.nextBtn.textContent = "Next Question";
+    elements.nextBtn.disabled = false;
+
+    if (isCorrect) {
+      quizState.score += 1;
+      playSound("win");
+      Array.from(wrapper.querySelectorAll(".fib-blank.is-correct")).forEach((blankElement, index) => {
+        window.setTimeout(() => triggerFireworks(blankElement), index * SUCCESS_FIREWORK_STAGGER_MS);
+      });
+    } else {
+      playSound("fail");
+    }
+
+    recordQuestionAnalytics(currentQuestion, null, isCorrect, Date.now(), {
+      questionType: "fib",
+      selectedOption: buildFillInBlankAnswerSummary(currentQuestion, state.placements),
+      correctOption: buildFillInBlankCorrectSummary(currentQuestion),
+      attemptCount: state.attempts,
+      fibAttempts: state.attemptSummaries.slice()
+    });
+    elements.scoreText.textContent = `Score: ${quizState.score}`;
+    updateFillInBlankUi();
+  }
+
+  function clearTouchDragTarget() {
+    if (!state.touchDrag || !state.touchDrag.targetElement) {
+      return;
+    }
+
+    state.touchDrag.targetElement.classList.remove("is-dragover");
+    state.touchDrag.targetElement = null;
+    state.touchDrag.targetType = null;
+    state.touchDrag.targetBlankId = null;
+  }
+
+  function getTouchDropTarget(clientX, clientY) {
+    const targetElement = document.elementFromPoint(clientX, clientY);
+    if (!targetElement || !(targetElement instanceof Element)) {
+      return null;
+    }
+
+    const blankElement = targetElement.closest(".fib-blank");
+    if (blankElement && wrapper.contains(blankElement)) {
+      const blankId = blankElement.getAttribute("data-blank-id");
+      if (blankId && !state.lockedBlankIds.has(blankId)) {
+        return { type: "blank", element: blankElement, blankId };
+      }
+    }
+
+    const bankElement = targetElement.closest(".fib-bank");
+    if (bankElement && bank.contains(bankElement)) {
+      return { type: "bank", element: bank };
+    }
+
+    return null;
+  }
+
+  function createTouchDragGhost(wordButton, clientX, clientY) {
+    const ghost = wordButton.cloneNode(true);
+    ghost.classList.remove(...FIB_TOUCH_GHOST_RESET_CLASSES);
+    ghost.classList.add("fib-drag-ghost", "is-selected");
+    ghost.removeAttribute("draggable");
+    ghost.style.left = `${clientX}px`;
+    ghost.style.top = `${clientY}px`;
+    document.body.appendChild(ghost);
+    return ghost;
+  }
+
+  function updateTouchDragGhost(clientX, clientY) {
+    if (!state.touchDrag || !state.touchDrag.ghost) {
+      return;
+    }
+
+    state.touchDrag.ghost.style.left = `${clientX}px`;
+    state.touchDrag.ghost.style.top = `${clientY}px`;
+  }
+
+  function updateTouchDragTarget(clientX, clientY) {
+    if (!state.touchDrag) {
+      return;
+    }
+
+    const dropTarget = getTouchDropTarget(clientX, clientY);
+    if (dropTarget && state.touchDrag.targetElement === dropTarget.element) {
+      return;
+    }
+
+    clearTouchDragTarget();
+
+    if (!dropTarget) {
+      return;
+    }
+
+    dropTarget.element.classList.add("is-dragover");
+    state.touchDrag.targetElement = dropTarget.element;
+    state.touchDrag.targetType = dropTarget.type;
+    state.touchDrag.targetBlankId = dropTarget.blankId || null;
+  }
+
+  function cleanupTouchDrag() {
+    if (!state.touchDrag) {
+      return;
+    }
+
+    clearTouchDragTarget();
+    if (state.touchDrag.ghost) {
+      state.touchDrag.ghost.remove();
+    }
+    if (state.touchDrag.sourceElement) {
+      state.touchDrag.sourceElement.classList.remove("is-touch-origin");
+    }
+
+    state.touchDrag = null;
+    state.selectedWordId = null;
+    updateFillInBlankUi();
+  }
+
+  function finishTouchDrag(event, shouldDrop) {
+    if (!state.touchDrag || event.pointerId !== state.touchDrag.pointerId) {
+      return;
+    }
+
+    const touchDrag = state.touchDrag;
+    const wasActive = touchDrag.active;
+    if (wasActive && shouldDrop) {
+      const dropTarget = getTouchDropTarget(event.clientX, event.clientY);
+      if (dropTarget && dropTarget.type === "blank" && dropTarget.blankId) {
+        placeWordInBlank(touchDrag.wordId, dropTarget.blankId);
+      } else if (dropTarget && dropTarget.type === "bank") {
+        clearSubmittedFeedback();
+        moveWordToBank(touchDrag.wordId);
+      }
+    }
+
+    if (wasActive) {
+      state.lastTouchDragAt = Date.now();
+      event.preventDefault();
+    }
+
+    cleanupTouchDrag();
+  }
+
+  function createWordChip(word) {
+    const wordButton = createElement("button", "fib-word", word.text);
+    wordButton.type = "button";
+    wordButton.draggable = true;
+    wordButton.setAttribute("data-word-id", word.id);
+    wordButton.setAttribute("aria-pressed", "false");
+    wordButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      if (Date.now() - state.lastTouchDragAt < TOUCH_DRAG_CLICK_SUPPRESSION_MS) {
+        event.preventDefault();
+        return;
+      }
+
+      if (state.finalized || wordButton.classList.contains("is-locked")) {
+        return;
+      }
+
+      if (state.selectedWordId === word.id && getFilledBlankIdForWord(word.id)) {
+        clearSubmittedFeedback();
+        moveWordToBank(word.id);
+        state.selectedWordId = null;
+        updateFillInBlankUi();
+        return;
+      }
+
+      setSelectedWord(word.id);
+    });
+    wordButton.addEventListener("pointerdown", function (event) {
+      if (event.pointerType === "mouse" || state.finalized || wordButton.classList.contains("is-locked")) {
+        return;
+      }
+
+      state.touchDrag = {
+        wordId: word.id,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        active: false,
+        ghost: null,
+        sourceElement: wordButton,
+        targetElement: null,
+        targetType: null,
+        targetBlankId: null
+      };
+      if (typeof wordButton.setPointerCapture === "function") {
+        wordButton.setPointerCapture(event.pointerId);
+      }
+    });
+    wordButton.addEventListener("pointermove", function (event) {
+      if (!state.touchDrag || event.pointerId !== state.touchDrag.pointerId) {
+        return;
+      }
+
+      const deltaX = event.clientX - state.touchDrag.startX;
+      const deltaY = event.clientY - state.touchDrag.startY;
+      const distance = Math.hypot(deltaX, deltaY);
+      if (!state.touchDrag.active && distance < TOUCH_DRAG_START_DISTANCE) {
+        return;
+      }
+
+      if (!state.touchDrag.active) {
+        clearSubmittedFeedback();
+        state.touchDrag.active = true;
+        state.selectedWordId = word.id;
+        state.touchDrag.ghost = createTouchDragGhost(wordButton, event.clientX, event.clientY);
+        wordButton.classList.add("is-touch-origin");
+        updateFillInBlankUi();
+      }
+
+      event.preventDefault();
+      updateTouchDragGhost(event.clientX, event.clientY);
+      updateTouchDragTarget(event.clientX, event.clientY);
+    });
+    wordButton.addEventListener("pointerup", function (event) {
+      finishTouchDrag(event, true);
+    });
+    wordButton.addEventListener("pointercancel", function (event) {
+      finishTouchDrag(event, false);
+    });
+    wordButton.addEventListener("dragstart", function (event) {
+      if (state.finalized || wordButton.classList.contains("is-locked")) {
+        event.preventDefault();
+        return;
+      }
+      state.selectedWordId = word.id;
+      event.dataTransfer.setData("text/plain", word.id);
+      event.dataTransfer.effectAllowed = "move";
+      window.setTimeout(updateFillInBlankUi, 0);
+    });
+    wordButton.addEventListener("dragend", function () {
+      state.selectedWordId = null;
+      updateFillInBlankUi();
+    });
+    wordElementsById.set(word.id, wordButton);
+    return wordButton;
+  }
+
+  function createBlank(blank, blankIndex) {
+    const blankButton = createElement("span", "fib-blank is-empty");
+    blankButton.setAttribute("role", "button");
+    blankButton.setAttribute("tabindex", "0");
+    blankButton.setAttribute("data-blank-id", blank.id);
+    blankButton.setAttribute("aria-label", `Blank ${blankIndex + 1}${blank.hint ? `, hint: ${blank.hint}` : ""}`);
+    if (blank.hint) {
+      blankButton.setAttribute("data-hint", blank.hint);
+    }
+    blankButton.addEventListener("click", function () {
+      handleBlankAction(blank.id);
+    });
+    blankButton.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+
+      event.preventDefault();
+      handleBlankAction(blank.id);
+    });
+    blankButton.addEventListener("dragover", function (event) {
+      if (state.finalized || state.lockedBlankIds.has(blank.id)) {
+        return;
+      }
+      event.preventDefault();
+      blankButton.classList.add("is-dragover");
+      event.dataTransfer.dropEffect = "move";
+    });
+    blankButton.addEventListener("dragleave", function () {
+      blankButton.classList.remove("is-dragover");
+    });
+    blankButton.addEventListener("drop", function (event) {
+      event.preventDefault();
+      blankButton.classList.remove("is-dragover");
+      const wordId = event.dataTransfer.getData("text/plain");
+      if (wordId) {
+        placeWordInBlank(wordId, blank.id);
+      }
+    });
+    blankButton.appendChild(createElement("span", "fib-blank-label", String(blankIndex + 1)));
+    blankElementsById.set(blank.id, blankButton);
+    return blankButton;
+  }
+
+  function renderParagraph() {
+    paragraph.innerHTML = "";
+    const activeBlankIds = new Set(currentQuestion.activeBlankIds);
+    const blankIndexById = new Map(currentQuestion.activeBlanks.map((blank, index) => [blank.id, index]));
+    const placeholderPattern = /\{\{([^}]+)\}\}/g;
+    let lastIndex = 0;
+    let match = placeholderPattern.exec(currentQuestion.paragraph);
+
+    while (match) {
+      if (match.index > lastIndex) {
+        paragraph.appendChild(document.createTextNode(currentQuestion.paragraph.slice(lastIndex, match.index)));
+      }
+
+      const blankId = match[1].trim();
+      const blank = getFillInBlankById(currentQuestion, blankId);
+      if (blank && activeBlankIds.has(blankId)) {
+        paragraph.appendChild(createBlank(blank, blankIndexById.get(blankId)));
+      } else {
+        const fallbackBlank = currentQuestion.blanks.find((candidate) => candidate.id === blankId);
+        paragraph.appendChild(document.createTextNode(fallbackBlank ? fallbackBlank.answer : match[0]));
+      }
+
+      lastIndex = match.index + match[0].length;
+      match = placeholderPattern.exec(currentQuestion.paragraph);
+    }
+
+    if (lastIndex < currentQuestion.paragraph.length) {
+      paragraph.appendChild(document.createTextNode(currentQuestion.paragraph.slice(lastIndex)));
+    }
+  }
+
+  bank.addEventListener("dragover", function (event) {
+    event.preventDefault();
+    bank.classList.add("is-dragover");
+    event.dataTransfer.dropEffect = "move";
+  });
+  bank.addEventListener("dragleave", function () {
+    bank.classList.remove("is-dragover");
+  });
+  bank.addEventListener("drop", function (event) {
+    event.preventDefault();
+    bank.classList.remove("is-dragover");
+    const wordId = event.dataTransfer.getData("text/plain");
+    if (wordId) {
+      clearSubmittedFeedback();
+      moveWordToBank(wordId);
+      state.selectedWordId = null;
+      updateFillInBlankUi();
+    }
+  });
+
+  renderParagraph();
+  configureHintButton(wrapper, hasFillInBlankHints(currentQuestion));
+  currentQuestion.wordBank.forEach((word) => {
+    bankGrid.appendChild(createWordChip(word));
+  });
+  quizState.submitCurrentAnswer = submitFillInBlankAnswer;
+  updateFillInBlankUi();
+}

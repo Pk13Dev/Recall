@@ -21,6 +21,22 @@ export function normalizeTextList(values, label, questionLabel) {
   return normalizedValues;
 }
 
+export function getFillInBlankPlaceholderIds(paragraph) {
+  const placeholderIds = new Set();
+  const placeholderPattern = /\{\{([^}]+)\}\}/g;
+  let match = placeholderPattern.exec(paragraph);
+
+  while (match) {
+    const placeholderId = match[1].trim();
+    if (placeholderId) {
+      placeholderIds.add(placeholderId);
+    }
+    match = placeholderPattern.exec(paragraph);
+  }
+
+  return placeholderIds;
+}
+
 export function normalizeMultipleChoiceQuestion(rawQuestion, index) {
   if (typeof rawQuestion !== "object" || rawQuestion === null) {
     throw new Error(`Question ${index + 1} is not a valid object.`);
@@ -105,6 +121,7 @@ export function normalizeFillInTheBlank(rawQuestion, index) {
   const title = typeof rawQuestion.title === "string" && rawQuestion.title.trim()
     ? rawQuestion.title.trim()
     : `Fill in the blanks ${index + 1}`;
+  const paragraphBlankIds = getFillInBlankPlaceholderIds(paragraph);
   const seenBlankIds = new Set();
   const blanks = rawQuestion.blanks.map((rawBlank, blankIndex) => {
     if (!rawBlank || typeof rawBlank !== "object" || Array.isArray(rawBlank)) {
@@ -131,7 +148,7 @@ export function normalizeFillInTheBlank(rawQuestion, index) {
       acceptedAnswers.unshift(answer);
     }
 
-    if (!paragraph.includes(`{{${blankId}}}`)) {
+    if (!paragraphBlankIds.has(blankId)) {
       throw new Error(`${questionLabel} paragraph is missing placeholder {{${blankId}}}.`);
     }
 

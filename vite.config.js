@@ -3,9 +3,17 @@ const { viteSingleFile } = require("vite-plugin-singlefile");
 const fs = require("fs");
 const path = require("path");
 
-function duplicateRefIndexForTauri() {
+function normalizeGeneratedHtmlNewlines(filePath) {
+  const html = fs.readFileSync(filePath, "utf8");
+  const normalizedHtml = html.replace(/\r\r\n/g, "\r\n\r\n");
+  if (normalizedHtml !== html) {
+    fs.writeFileSync(filePath, normalizedHtml);
+  }
+}
+
+function prepareRefIndexForTauri() {
   return {
-    name: "duplicate-ref-index-for-tauri",
+    name: "prepare-ref-index-for-tauri",
     apply: "build",
     closeBundle() {
       const outputDirectory = path.resolve(__dirname, "dist", "ref");
@@ -16,6 +24,7 @@ function duplicateRefIndexForTauri() {
         return;
       }
 
+      normalizeGeneratedHtmlNewlines(refIndexPath);
       fs.copyFileSync(refIndexPath, tauriIndexPath);
     }
   };
@@ -26,7 +35,7 @@ module.exports = defineConfig({
   base: "./",
   plugins: [
     viteSingleFile({ removeViteModuleLoader: true }),
-    duplicateRefIndexForTauri()
+    prepareRefIndexForTauri()
   ],
   server: {
     host: "127.0.0.1",
