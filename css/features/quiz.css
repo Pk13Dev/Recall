@@ -1,0 +1,79 @@
+.quiz-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  color: var(--muted);
+  font-weight: 500;
+  flex-wrap: wrap;
+}
+
+.question-text {
+  margin: 0 0 1.2rem;
+  line-height: 1.35;
+}
+
+.options-container {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.option-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--surface-border);
+  background: var(--option-bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 120ms ease;
+}
+
+.option-btn:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.option-btn:hover,
+.option-btn:focus-visible {
+  border-color: var(--accent);
+  background: var(--option-hover-bg);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.option-btn.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.option-btn.is-correct {
+  border-color: var(--success);
+  background: var(--success-soft);
+  color: var(--success-text);
+  animation: correctPulse 360ms ease-out;
+}
+
+.option-btn.is-correct-answer {
+  border-color: var(--success);
+  background: var(--correct-answer-bg);
+  color: var(--correct-answer-text);
+}
+
+.option-btn.is-wrong {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  animation: wrongShake 320ms ease-out;
+}
+
+.quiz-card {
+  overflow: visible;
+}
+
+.options-container-fib {
+  display: block;
+}

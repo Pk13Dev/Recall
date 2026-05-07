@@ -1,0 +1,170 @@
+.guide-screen-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.guide-hero-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 56%, transparent) 0%, transparent 36%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, var(--accent-soft) 6%), var(--surface));
+}
+
+.guide-hero-copy {
+  max-width: 46rem;
+}
+
+.guide-kicker {
+  margin: 0 0 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.guide-summary-copy {
+  margin-bottom: 0;
+}
+
+.guide-hero-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.guide-overview-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.guide-overview-step {
+  border: 1px solid color-mix(in srgb, var(--surface-border) 82%, var(--accent-soft) 18%);
+  border-radius: 18px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 95%, var(--accent-soft) 5%), color-mix(in srgb, var(--list-item-bg) 84%, var(--surface) 16%));
+  padding: 0.95rem 1rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.guide-step-number {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.guide-overview-step h3,
+.guide-action-title {
+  margin: 0;
+}
+
+.guide-overview-step p {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.guide-panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.guide-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.guide-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.guide-panel-kicker {
+  margin: 0 0 0.18rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.guide-action-list,
+.guide-storage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.guide-action-item {
+  border: 1px solid color-mix(in srgb, var(--surface-border) 80%, var(--accent-soft) 20%);
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, var(--accent-soft) 4%), color-mix(in srgb, var(--list-item-bg) 82%, var(--surface) 18%));
+  padding: 0.85rem 0.95rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.guide-action-chip,
+.guide-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--surface-border) 68%, var(--accent-soft) 32%);
+  background: color-mix(in srgb, var(--accent-soft) 74%, var(--surface) 26%);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.5rem 0.72rem;
+  white-space: nowrap;
+}
+
+.guide-action-copy {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.guide-action-description,
+.guide-storage-detail {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.guide-storage-card {
+  gap: 0.95rem;
+}
+
+.guide-storage-detail {
+  font-size: 0.95rem;
+}
+
+.guide-storage-list li {
+  border: 1px solid color-mix(in srgb, var(--surface-border) 78%, var(--accent-soft) 22%);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--surface-soft) 92%, transparent);
+  padding: 0.85rem 0.95rem;
+  line-height: 1.55;
+}

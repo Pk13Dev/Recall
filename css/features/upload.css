@@ -1,0 +1,105 @@
+.upload-screen-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.upload-card {
+  padding: 1rem 1.15rem 1.05rem;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 62%, transparent) 0%, transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 90%, var(--accent-soft) 10%), var(--surface));
+}
+
+.upload-card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(290px, 360px);
+  gap: 1.2rem;
+  align-items: center;
+}
+
+.upload-card-copy {
+  max-width: 31rem;
+}
+
+.upload-kicker {
+  margin: 0 0 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.upload-card h2 {
+  margin-bottom: 0.35rem;
+}
+
+.upload-card-footer {
+  margin-top: 0.95rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid color-mix(in srgb, var(--surface-border) 85%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.drop-zone {
+  border: 1.5px dashed color-mix(in srgb, var(--drop-border) 88%, var(--surface) 12%);
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--drop-bg) 92%, var(--surface) 8%), var(--drop-bg));
+  padding: 0.95rem 1rem;
+  text-align: left;
+  display: grid;
+  gap: 0.8rem;
+  justify-items: start;
+  align-content: center;
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+}
+
+.drop-zone:hover,
+.drop-zone:focus {
+  border-color: var(--accent);
+  background: var(--drop-hover-bg);
+  outline: none;
+}
+
+.drop-zone.is-dragover {
+  border-color: var(--accent);
+  background: var(--drop-hover-bg);
+  transform: translateY(-1px);
+}
+
+.upload-card.is-dragover .drop-zone {
+  border-color: var(--accent);
+  background: var(--drop-hover-bg);
+  transform: translateY(-1px);
+}
+
+.drop-copy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.drop-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.drop-subtitle {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.helper-text {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.button-row {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}

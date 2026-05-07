@@ -49,6 +49,9 @@ module.exports = defineConfig({
     strictPort: true,
     open: "/RefIndex.html"
   },
+  css: {
+    devSourcemap: true
+  },
   build: {
     outDir: "dist/ref",
     emptyOutDir: true,

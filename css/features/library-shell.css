@@ -1,0 +1,169 @@
+.library-card {
+  position: relative;
+  overflow: visible;
+  padding: 1.35rem;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 58%, transparent) 0%, transparent 38%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 95%, var(--accent-soft) 5%), var(--surface));
+}
+
+.library-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--card-sheen), transparent 32%);
+  pointer-events: none;
+}
+
+.saved-header {
+  display: grid;
+  justify-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.95rem;
+}
+
+.library-header-copy {
+  display: grid;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 30rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.library-header-copy h3 {
+  font-size: 1.42rem;
+  letter-spacing: -0.03em;
+}
+
+.library-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.library-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.library-actions .btn {
+  width: 100%;
+  border-radius: 999px;
+  padding: 0.56rem 0.72rem;
+  font-size: 0.82rem;
+  background: color-mix(in srgb, var(--secondary-bg) 82%, var(--surface) 18%);
+}
+
+.create-quiz-btn {
+  position: absolute;
+  top: 1.35rem;
+  right: 1.35rem;
+  z-index: 2;
+  border-radius: 999px;
+  padding: 0.56rem 0.9rem;
+  font-size: 0.82rem;
+}
+
+.volume-value {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.volume-control {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.volume-control-mini {
+  margin-top: 0;
+}
+
+.saved-note {
+  margin: 0.12rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.library-breadcrumb {
+  margin-top: 0.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.library-editor {
+  margin-top: 1rem;
+  border: 1px solid var(--surface-border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 86%, var(--accent-soft) 14%), var(--surface));
+  border-radius: 18px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.7rem;
+  box-shadow: var(--card-shadow);
+}
+
+.library-editor[hidden] {
+  display: none;
+}
+
+.library-editor-copy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.library-editor-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.library-editor-subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.library-editor-fields {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.library-field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.library-input,
+.library-select {
+  width: 100%;
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
+  font: inherit;
+  padding: 0.68rem 0.8rem;
+}
+
+.library-input:focus,
+.library-select:focus {
+  outline: 2px solid var(--focus-ring-soft);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.library-editor-actions {
+  display: flex;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}

@@ -1,0 +1,200 @@
+.library-path-btn {
+  appearance: none;
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  background: var(--path-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 0.38rem 0.72rem;
+  cursor: pointer;
+}
+
+.library-path-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.library-path-sep {
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+.saved-empty {
+  margin: 1rem 0 0;
+  padding: 1rem 1.1rem;
+  border: 1px dashed color-mix(in srgb, var(--surface-border) 84%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-soft) 92%, transparent);
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.saved-quiz-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+  position: relative;
+  isolation: isolate;
+}
+
+.saved-item {
+  position: relative;
+  overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--surface-border) 80%, var(--accent-soft) 20%);
+  border-radius: 20px;
+  padding: 0.95rem 1rem 0.95rem 1.2rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, var(--accent-soft) 4%), color-mix(in srgb, var(--list-item-bg) 86%, var(--surface) 14%));
+  box-shadow: var(--elevated-shadow);
+  transition: border-color 160ms ease, transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.saved-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 92%, #ffffff 8%), transparent);
+  opacity: 0.7;
+}
+
+.saved-item-quiz::before {
+  opacity: 0.42;
+}
+
+.saved-item:hover {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 90%, var(--accent-soft) 10%), color-mix(in srgb, var(--list-item-bg) 74%, var(--accent-soft) 26%));
+  transform: translateY(-2px);
+  box-shadow: var(--elevated-shadow-hover);
+  z-index: 2;
+}
+
+.saved-item-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.34rem;
+}
+
+.saved-item-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1.02rem;
+  font-weight: 700;
+  word-break: break-word;
+  margin: 0;
+}
+
+.saved-item-meta {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.saved-item-type {
+  display: inline-block;
+  margin-right: 0;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--surface-border) 72%, var(--accent-soft) 28%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-soft) 78%, var(--surface) 22%);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text) 75%, var(--accent) 25%);
+}
+
+.saved-item-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+
+.saved-action-menu-wrap {
+  position: relative;
+}
+
+.saved-action-menu {
+  position: relative;
+}
+
+.saved-action-menu-toggle {
+  min-width: 6.2rem;
+}
+
+.saved-action-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 8.25rem;
+  padding: 0.38rem;
+  border: 1px solid color-mix(in srgb, var(--surface-border) 75%, var(--accent-soft) 25%);
+  border-radius: 12px;
+  background: var(--popup-bg);
+  box-shadow: var(--panel-shadow);
+  display: grid;
+  gap: 0.3rem;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 130ms ease, transform 130ms ease;
+  z-index: 24;
+}
+
+.saved-action-menu.is-open .saved-action-menu-panel {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.saved-action-menu-panel .saved-item-btn {
+  width: 100%;
+  text-align: left;
+  border-radius: 9px;
+  padding: 0.42rem 0.62rem;
+}
+
+.saved-item-btn {
+  font-size: 0.82rem;
+  padding: 0.5rem 0.86rem;
+  border-radius: 999px;
+}
+
+.saved-item-main-btn {
+  background: color-mix(in srgb, var(--surface) 72%, var(--accent-soft) 28%);
+  border-color: color-mix(in srgb, var(--surface-border) 55%, var(--accent) 45%);
+  color: var(--text);
+}
+
+.saved-item-main-btn:hover {
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface) 28%);
+}
+
+.saved-item-danger-btn {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--surface-border) 55%, var(--danger) 45%);
+}
+
+.saved-item-danger-btn:hover {
+  background: color-mix(in srgb, var(--danger-soft) 72%, var(--surface) 28%);
+}

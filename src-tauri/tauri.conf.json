@@ -5,7 +5,7 @@
   "identifier": "com.pickl.recall",
   "build": {
     "frontendDist": "../dist/ref",
-    "devUrl": "http://localhost:4173",
+    "devUrl": "http://127.0.0.1:4173/RefIndex.html",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },

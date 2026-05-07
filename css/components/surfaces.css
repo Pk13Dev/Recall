@@ -1,0 +1,60 @@
+.screen {
+  display: none;
+}
+
+.screen.is-active {
+  display: block;
+  animation: fadeUp 220ms ease-out;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--radius-lg);
+  padding: clamp(1.2rem, 2.2vw, 2rem);
+  position: relative;
+  overflow: hidden;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, color-mix(in srgb, var(--card-sheen) 82%, transparent) 48%, transparent 76%);
+  opacity: 0;
+  transform: translateX(-12%);
+  transition: opacity 220ms ease, transform 220ms ease;
+  pointer-events: none;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--elevated-shadow-hover);
+  border-color: color-mix(in srgb, var(--surface-border) 76%, var(--accent) 24%);
+}
+
+.card:hover::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+h2 {
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+  font-size: clamp(1.3rem, 2vw, 1.7rem);
+}
+
+h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.screen-copy {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 0.96rem;
+  line-height: 1.55;
+  color: var(--muted);
+}

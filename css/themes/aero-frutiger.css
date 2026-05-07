@@ -1,0 +1,412 @@
+body.theme-aero-frutiger::before,
+body.theme-aero-frutiger::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.theme-aero-frutiger::before {
+  top: -12vh;
+  left: -12vw;
+  width: 78vw;
+  height: 58vh;
+  background:
+    linear-gradient(132deg, rgba(184, 255, 244, 0.28), rgba(89, 229, 208, 0.15) 52%, transparent 72%),
+    linear-gradient(28deg, rgba(0, 191, 224, 0.3), transparent 64%);
+  clip-path: polygon(0 0, 78% 0, 47% 100%, 0 82%);
+  filter: blur(3px);
+  opacity: 0.52;
+}
+
+body.theme-aero-frutiger::after {
+  right: -16vw;
+  bottom: -15vh;
+  width: 88vw;
+  height: 46vh;
+  background:
+    linear-gradient(8deg, rgba(156, 255, 111, 0.55), rgba(191, 255, 230, 0.26) 44%, transparent 74%),
+    repeating-linear-gradient(90deg, rgba(185, 255, 238, 0.24) 0 2px, transparent 2px 18px);
+  border-top: 1px solid rgba(185, 255, 238, 0.38);
+  border-radius: 58% 0 0 0;
+  filter: blur(4px);
+  opacity: 0.56;
+}
+
+body.theme-aero-frutiger .app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 6vh 8vw auto auto;
+  width: min(38vw, 430px);
+  height: min(34vw, 360px);
+  border: 1px solid rgba(185, 255, 238, 0.3);
+  border-radius: 43% 57% 46% 54% / 52% 45% 55% 48%;
+  background:
+    linear-gradient(140deg, rgba(184, 255, 244, 0.24), transparent 36%),
+    repeating-linear-gradient(0deg, rgba(184, 255, 244, 0.16) 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(90deg, rgba(184, 255, 244, 0.14) 0 1px, transparent 1px 18px);
+  box-shadow: inset 0 0 42px rgba(184, 255, 244, 0.18), 0 22px 56px rgba(0, 105, 148, 0.16);
+  transform: rotate(-10deg);
+  pointer-events: none;
+  z-index: -1;
+}
+
+body.theme-aero-frutiger .app-header::before {
+  inset: -0.55rem 10% auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.92), rgba(123, 255, 204, 0.66), transparent);
+  box-shadow: 0 0 18px rgba(137, 255, 235, 0.58);
+}
+
+body.theme-aero-frutiger h1,
+body.theme-aero-frutiger h2,
+body.theme-aero-frutiger h3,
+body.theme-aero-frutiger .app-home-btn {
+  color: #064563;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.86), 0 9px 22px rgba(0, 124, 175, 0.2);
+}
+
+body.theme-aero-frutiger h1 {
+  letter-spacing: 0;
+}
+
+body.theme-aero-frutiger .app-header {
+  z-index: 120;
+}
+
+body.theme-aero-frutiger .screen {
+  position: relative;
+  z-index: 1;
+}
+
+body.theme-aero-frutiger .top-controls,
+body.theme-aero-frutiger .sound-popup,
+body.theme-aero-frutiger .theme-option-btn,
+body.theme-aero-frutiger .sound-toggle-btn,
+body.theme-aero-frutiger .card,
+body.theme-aero-frutiger .drop-zone,
+body.theme-aero-frutiger .btn,
+body.theme-aero-frutiger .library-input,
+body.theme-aero-frutiger .library-select,
+body.theme-aero-frutiger .modal-card,
+body.theme-aero-frutiger .library-path-btn,
+body.theme-aero-frutiger .saved-empty,
+body.theme-aero-frutiger .saved-item,
+body.theme-aero-frutiger .saved-item-type,
+body.theme-aero-frutiger .saved-action-menu-panel,
+body.theme-aero-frutiger .quiz-creator-question-card,
+body.theme-aero-frutiger .quiz-creator-option-row,
+body.theme-aero-frutiger .quiz-creator-fib-blank-row,
+body.theme-aero-frutiger .settings-panel,
+body.theme-aero-frutiger .option-btn,
+body.theme-aero-frutiger .fib-blank,
+body.theme-aero-frutiger .fib-word,
+body.theme-aero-frutiger .fib-bank,
+body.theme-aero-frutiger .guide-overview-step,
+body.theme-aero-frutiger .guide-action-item,
+body.theme-aero-frutiger .guide-action-chip,
+body.theme-aero-frutiger .guide-status-chip,
+body.theme-aero-frutiger .guide-storage-list li,
+body.theme-aero-frutiger .analytics-row,
+body.theme-aero-frutiger .analytics-score-chip,
+body.theme-aero-frutiger .analytics-answer-badge,
+body.theme-aero-frutiger .analytics-empty-message,
+body.theme-aero-frutiger .analytics-performance-stat,
+body.theme-aero-frutiger .analytics-performance-group,
+body.theme-aero-frutiger .analytics-mini-row,
+body.theme-aero-frutiger .analytics-graph-card,
+body.theme-aero-frutiger .analytics-bar-track {
+  border-color: var(--aero-glass-border);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(22px) saturate(1.55);
+  -webkit-backdrop-filter: blur(22px) saturate(1.55);
+}
+
+body.theme-aero-frutiger .sound-control {
+  z-index: 130;
+}
+
+body.theme-aero-frutiger .sound-popup {
+  z-index: 500;
+}
+
+body.theme-aero-frutiger .top-controls,
+body.theme-aero-frutiger .sound-popup,
+body.theme-aero-frutiger .card,
+body.theme-aero-frutiger .upload-card,
+body.theme-aero-frutiger .library-card,
+body.theme-aero-frutiger .library-editor,
+body.theme-aero-frutiger .quiz-creator-question-card,
+body.theme-aero-frutiger .quiz-creator-option-row,
+body.theme-aero-frutiger .quiz-creator-fib-blank-row,
+body.theme-aero-frutiger .settings-panel,
+body.theme-aero-frutiger .guide-hero-card,
+body.theme-aero-frutiger .guide-overview-step,
+body.theme-aero-frutiger .guide-action-item,
+body.theme-aero-frutiger .guide-storage-list li,
+body.theme-aero-frutiger .analytics-hero-card,
+body.theme-aero-frutiger .analytics-row,
+body.theme-aero-frutiger .analytics-performance-stat,
+body.theme-aero-frutiger .analytics-performance-group,
+body.theme-aero-frutiger .analytics-mini-row,
+body.theme-aero-frutiger .analytics-graph-card {
+  background:
+    linear-gradient(180deg, rgba(124, 226, 230, 0.5), rgba(72, 210, 221, 0.32) 48%, rgba(15, 142, 190, 0.22)),
+    linear-gradient(115deg, rgba(182, 255, 242, 0.2), transparent 34%);
+}
+
+body.theme-aero-frutiger .top-controls {
+  width: max-content;
+  max-width: 100%;
+  padding: 0.48rem;
+  border-radius: 999px;
+}
+
+body.theme-aero-frutiger .sound-popup {
+  width: 268px;
+  border-radius: 24px;
+  padding: 0.72rem;
+  background:
+    linear-gradient(180deg, rgba(122, 224, 230, 0.78), rgba(71, 198, 214, 0.68)),
+    var(--popup-bg);
+}
+
+body.theme-aero-frutiger .theme-options {
+  gap: 0.42rem;
+}
+
+body.theme-aero-frutiger .theme-option-btn {
+  font-size: 0.72rem;
+  line-height: 1.05;
+  min-height: 2.05rem;
+}
+
+body.theme-aero-frutiger .card {
+  border-radius: 34px;
+}
+
+body.theme-aero-frutiger .upload-card,
+body.theme-aero-frutiger .library-card,
+body.theme-aero-frutiger .guide-hero-card,
+body.theme-aero-frutiger .analytics-hero-card {
+  border-radius: 44px 28px 56px 30px;
+}
+
+body.theme-aero-frutiger .card::after {
+  opacity: 0.22;
+  transform: translateX(0);
+  background:
+    linear-gradient(112deg, transparent 0 14%, rgba(182, 255, 241, 0.46) 15%, rgba(85, 222, 212, 0.2) 22%, transparent 32%),
+    linear-gradient(180deg, rgba(177, 255, 244, 0.18), transparent 22%);
+}
+
+body.theme-aero-frutiger .library-card::before {
+  background:
+    linear-gradient(110deg, rgba(178, 255, 241, 0.24), transparent 28%),
+    radial-gradient(ellipse at top right, rgba(72, 222, 202, 0.24), transparent 58%);
+  opacity: 0.42;
+}
+
+body.theme-aero-frutiger .sound-toggle-btn,
+body.theme-aero-frutiger .theme-option-btn,
+body.theme-aero-frutiger .btn,
+body.theme-aero-frutiger .library-path-btn,
+body.theme-aero-frutiger .saved-item-btn,
+body.theme-aero-frutiger .option-btn,
+body.theme-aero-frutiger .fib-word,
+body.theme-aero-frutiger .fib-blank {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(192, 255, 247, 0.62), rgba(129, 232, 229, 0.46) 45%, rgba(20, 165, 205, 0.32)),
+    var(--secondary-bg);
+  color: var(--text);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+body.theme-aero-frutiger .sound-toggle-btn::before,
+body.theme-aero-frutiger .theme-option-btn::before,
+body.theme-aero-frutiger .btn::before,
+body.theme-aero-frutiger .library-path-btn::before,
+body.theme-aero-frutiger .saved-item-btn::before,
+body.theme-aero-frutiger .option-btn::before,
+body.theme-aero-frutiger .fib-word::before,
+body.theme-aero-frutiger .fib-blank::before {
+  content: "";
+  position: absolute;
+  inset: 2px 8px auto;
+  height: 42%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(210, 255, 250, 0.64), rgba(184, 255, 244, 0.1));
+  opacity: 0.64;
+  pointer-events: none;
+}
+
+body.theme-aero-frutiger .sound-toggle-btn:hover,
+body.theme-aero-frutiger .theme-option-btn:hover,
+body.theme-aero-frutiger .theme-option-btn.is-active,
+body.theme-aero-frutiger .btn:not(:disabled):hover,
+body.theme-aero-frutiger .library-path-btn:hover,
+body.theme-aero-frutiger .saved-item-main-btn:hover,
+body.theme-aero-frutiger .option-btn:hover,
+body.theme-aero-frutiger .option-btn:focus-visible,
+body.theme-aero-frutiger .fib-word:hover,
+body.theme-aero-frutiger .fib-word:focus-visible,
+body.theme-aero-frutiger .fib-blank:hover,
+body.theme-aero-frutiger .fib-blank:focus-visible,
+body.theme-aero-frutiger .fib-blank.is-target,
+body.theme-aero-frutiger .fib-blank.is-dragover {
+  border-color: rgba(205, 255, 249, 0.82);
+  background:
+    linear-gradient(180deg, rgba(205, 255, 249, 0.72), rgba(112, 236, 218, 0.58) 44%, rgba(0, 177, 218, 0.38)),
+    var(--secondary-hover-bg);
+  box-shadow: 0 16px 30px rgba(0, 119, 168, 0.24), inset 0 1px 0 rgba(213, 255, 250, 0.7);
+}
+
+body.theme-aero-frutiger .btn-primary {
+  background:
+    linear-gradient(180deg, rgba(184, 255, 244, 0.44), rgba(0, 182, 221, 0.82) 46%, #008ed8),
+    var(--accent);
+  color: #ffffff;
+  text-shadow: 0 1px 1px rgba(0, 67, 95, 0.44);
+}
+
+body.theme-aero-frutiger .drop-zone {
+  border-radius: 28px 42px 28px 42px;
+  border-style: solid;
+}
+
+body.theme-aero-frutiger .library-input,
+body.theme-aero-frutiger .library-select,
+body.theme-aero-frutiger input,
+body.theme-aero-frutiger select,
+body.theme-aero-frutiger textarea {
+  border-radius: 18px;
+  background: rgba(141, 229, 230, 0.44);
+  color: var(--text);
+  border-color: rgba(205, 255, 249, 0.64);
+  box-shadow: inset 0 1px 9px rgba(0, 122, 156, 0.16), inset 0 1px 0 rgba(213, 255, 250, 0.58);
+}
+
+body.theme-aero-frutiger .volume-control {
+  accent-color: #00bfe8;
+}
+
+body.theme-aero-frutiger .saved-item {
+  border-radius: 28px 18px 34px 18px;
+}
+
+body.theme-aero-frutiger .saved-item::before {
+  width: 7px;
+  top: 16px;
+  bottom: 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #9dffdc, #00bfe8, #57dc72);
+  opacity: 0.94;
+}
+
+body.theme-aero-frutiger .saved-action-menu-panel {
+  border-radius: 20px;
+  background: rgba(222, 252, 255, 0.76);
+}
+
+body.theme-aero-frutiger .saved-item-type,
+body.theme-aero-frutiger .guide-action-chip,
+body.theme-aero-frutiger .guide-status-chip,
+body.theme-aero-frutiger .analytics-score-chip,
+body.theme-aero-frutiger .analytics-answer-badge {
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(190, 255, 247, 0.62), rgba(110, 232, 213, 0.54)),
+    var(--accent-soft);
+}
+
+body.theme-aero-frutiger .option-btn {
+  border-radius: 22px;
+  padding-top: 0.92rem;
+  padding-bottom: 0.92rem;
+}
+
+body.theme-aero-frutiger .option-btn.is-selected,
+body.theme-aero-frutiger .fib-blank.is-filled,
+body.theme-aero-frutiger .fib-word.is-selected {
+  border-color: rgba(205, 255, 249, 0.82);
+  background:
+    linear-gradient(180deg, rgba(196, 255, 247, 0.62), rgba(112, 236, 218, 0.62), rgba(15, 159, 212, 0.34)),
+    var(--accent-soft);
+}
+
+body.theme-aero-frutiger .fib-question.is-hinting .fib-blank[data-hint]::after {
+  border-color: var(--aero-glass-border);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(190, 255, 247, 0.76), rgba(106, 232, 213, 0.58)),
+    var(--popup-bg);
+  box-shadow: var(--card-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  backdrop-filter: blur(18px) saturate(1.35);
+}
+
+body.theme-aero-frutiger .btn-secondary.is-active {
+  border-color: rgba(205, 255, 249, 0.88);
+  background:
+    linear-gradient(180deg, rgba(205, 255, 249, 0.78), rgba(112, 236, 218, 0.64) 48%, rgba(0, 177, 218, 0.42)),
+    var(--accent-soft);
+  box-shadow: 0 14px 28px rgba(0, 119, 168, 0.28), inset 0 1px 0 rgba(213, 255, 250, 0.76);
+}
+
+body.theme-aero-frutiger .fib-question.is-hinting .fib-blank[data-hint]::before {
+  border-color: var(--aero-glass-border);
+  background: rgba(190, 255, 247, 0.82);
+}
+
+body.theme-aero-frutiger .option-btn.is-correct,
+body.theme-aero-frutiger .option-btn.is-correct-answer,
+body.theme-aero-frutiger .fib-blank.is-correct,
+body.theme-aero-frutiger .fib-word.is-correct,
+body.theme-aero-frutiger .analytics-answer-badge.is-correct {
+  border-color: rgba(212, 255, 231, 0.86);
+  background:
+    linear-gradient(180deg, rgba(213, 255, 229, 0.68), rgba(160, 248, 183, 0.74), rgba(26, 169, 104, 0.42)),
+    var(--success-soft);
+  color: var(--success-text);
+}
+
+body.theme-aero-frutiger .option-btn.is-wrong,
+body.theme-aero-frutiger .fib-blank.is-bait,
+body.theme-aero-frutiger .fib-word.is-bait,
+body.theme-aero-frutiger .fib-blank.is-missing,
+body.theme-aero-frutiger .analytics-answer-badge.is-wrong {
+  border-color: rgba(255, 218, 233, 0.76);
+  background:
+    linear-gradient(180deg, rgba(255, 220, 234, 0.58), rgba(255, 181, 211, 0.7), rgba(212, 75, 126, 0.32)),
+    var(--danger-soft);
+  color: var(--danger-text);
+}
+
+body.theme-aero-frutiger .fib-bank {
+  border-radius: 26px;
+}
+
+body.theme-aero-frutiger .analytics-line-chart-line,
+body.theme-aero-frutiger .analytics-line-chart-line-secondary {
+  filter: drop-shadow(0 0 5px rgba(0, 204, 240, 0.36));
+}
+
+body.theme-aero-frutiger .analytics-line-chart-point {
+  stroke: rgba(205, 255, 249, 0.82);
+}
+
+body.theme-aero-frutiger .analytics-bar-track {
+  border-radius: 999px;
+  background: rgba(78, 194, 212, 0.34);
+}
+
+body.theme-aero-frutiger .analytics-bar-fill,
+body.theme-aero-frutiger .analytics-bar-fill-success,
+body.theme-aero-frutiger .analytics-bar-fill-danger,
+body.theme-aero-frutiger .analytics-bar-fill-muted {
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74), 0 0 14px rgba(0, 203, 236, 0.24);
+}

@@ -1,0 +1,262 @@
+@media (max-width: 920px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-performance-stat-grid,
+  .analytics-performance-groups,
+  .analytics-performance-groups-two,
+  .analytics-graph-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-panel-wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 1.45rem 0.85rem 2.4rem;
+  }
+
+  .top-controls {
+    justify-content: flex-start;
+    width: max-content;
+    max-width: 100%;
+    margin-bottom: 0.7rem;
+    padding: 0.35rem 0.4rem;
+  }
+
+  .sound-toggle-btn {
+    font-size: 0.78rem;
+    padding: 0.38rem 0.66rem;
+  }
+
+  h1 {
+    line-height: 0.96;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .upload-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .button-row {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .fib-paragraph {
+    font-size: 0.98rem;
+    line-height: 1.58;
+  }
+
+  .fib-blank {
+    min-width: min(6.2rem, 58vw);
+    min-height: 2rem;
+    margin-bottom: 0.12rem;
+  }
+
+  .fib-bank {
+    position: sticky;
+    bottom: 0.65rem;
+    z-index: 30;
+    margin-top: 0.15rem;
+    backdrop-filter: blur(14px);
+  }
+
+  .fib-bank-grid {
+    max-height: 9rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.38rem;
+  }
+
+  .fib-word {
+    min-height: 2.28rem;
+    padding: 0.36rem 0.58rem;
+  }
+
+  .upload-button-row .btn,
+  .upload-card-footer .btn {
+    width: auto;
+  }
+
+  .drop-zone {
+    padding: 1.4rem 0.85rem;
+  }
+
+  .saved-item {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .saved-item-copy {
+    width: 100%;
+  }
+
+  .saved-item-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-content: stretch;
+    align-items: start;
+    gap: 0.45rem;
+  }
+
+  .saved-action-menu-toggle {
+    min-width: 5.8rem;
+    font-size: 0.78rem;
+    padding: 0.42rem 0.68rem;
+  }
+
+  .saved-action-menu-panel {
+    right: 0;
+    min-width: 7.6rem;
+  }
+
+  .guide-hero-card,
+  .analytics-hero-card {
+    flex-direction: column;
+  }
+
+  .guide-hero-actions,
+  .analytics-hero-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .guide-action-item,
+  .guide-overview-step {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-status-chip {
+    white-space: normal;
+  }
+
+  .analytics-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-row,
+  .analytics-row-answer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .analytics-mini-row,
+  .analytics-bar-copy,
+  .analytics-graph-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .analytics-graph-note {
+    text-align: left;
+  }
+
+  .saved-item-main-btn {
+    flex: 0 0 auto;
+  }
+
+  .library-editor-actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+
+  .create-quiz-btn {
+    position: static;
+    justify-self: center;
+    width: auto;
+    margin: 0 0 0.65rem;
+  }
+
+  .quiz-creator-header,
+  .quiz-creator-actions,
+  .quiz-creator-question-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .quiz-creator-question-tools {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .quiz-creator-type-field {
+    min-width: 0;
+  }
+
+  .quiz-creator-fib-settings,
+  .quiz-creator-fib-blank-row {
+    grid-template-columns: 1fr;
+  }
+
+  .quiz-creator-fib-blank-title {
+    margin-bottom: 0;
+  }
+
+  .quiz-creator-option-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .quiz-creator-remove-option-btn {
+    grid-column: 2;
+    width: auto;
+    justify-self: start;
+  }
+
+  .settings-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-panel-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .library-actions {
+    gap: 0.35rem;
+  }
+
+  .library-actions .btn {
+    width: 100%;
+    padding: 0.46rem 0.5rem;
+    font-size: 0.74rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+}

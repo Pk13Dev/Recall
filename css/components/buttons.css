@@ -1,0 +1,84 @@
+.quiz-button-row {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.quiz-button-row.has-hint {
+  justify-content: space-between;
+}
+
+.upload-button-row {
+  margin-top: 0;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.72rem 1.1rem;
+  cursor: pointer;
+  transition: transform 120ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:not(:disabled):hover {
+  background: var(--primary-hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 22px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.btn-secondary {
+  background: var(--secondary-bg);
+  border-color: var(--surface-border);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  background: var(--secondary-hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(19, 28, 40, 0.1);
+}
+
+.btn-secondary.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus-ring-soft);
+}
+
+.btn-compact {
+  font-size: 0.9rem;
+  padding: 0.45rem 0.8rem;
+}
+
+.error-message {
+  min-height: 1.25rem;
+  margin: 0.05rem 0 0;
+  padding-left: 0.15rem;
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.saved-section {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+}

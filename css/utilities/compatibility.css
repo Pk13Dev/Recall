@@ -1,0 +1,25 @@
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.theme-aero-frutiger .top-controls,
+  body.theme-aero-frutiger .sound-popup,
+  body.theme-aero-frutiger .card,
+  body.theme-aero-frutiger .saved-item,
+  body.theme-aero-frutiger .option-btn {
+    background: rgba(112, 218, 226, 0.84);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.is-active,
+  .btn,
+  .option-btn,
+  .fib-blank,
+  .fib-word,
+  .firework-particle,
+  .confetti-piece,
+  body.theme-vibrant::before,
+  body.theme-vibrant::after,
+  body.theme-vibrant .app-shell::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}

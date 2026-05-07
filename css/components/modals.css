@@ -1,0 +1,54 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--overlay-bg);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.modal-card {
+  width: min(100%, 420px);
+  border: 1px solid var(--surface-border);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--modal-shadow);
+  padding: 1.15rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.modal-copy,
+.modal-note {
+  margin: 0;
+  color: var(--muted);
+}
+
+.modal-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-weight: 600;
+}
+
+.modal-checkbox input {
+  margin-top: 0.18rem;
+  accent-color: var(--accent);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

@@ -5,7 +5,7 @@ RECALL is a local-first study app for running quiz JSON files as multiple-choice
 ## Quick pipeline
 
 - Root `RefIndex.html` is the refactored app entry for development
-- `css/styles.css` and the files in `audio/` are shared by the refactored build
+- `css/styles.css` is the stylesheet entrypoint; organized CSS modules live under `css/base`, `css/components`, `css/features`, `css/layout`, `css/themes`, and `css/utilities`
 - Vite builds the shared web app into `dist/ref`
 - Tauri packages desktop from `dist/ref`
 - Capacitor packages Android from `dist/ref`
