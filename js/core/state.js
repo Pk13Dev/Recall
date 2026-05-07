@@ -18,6 +18,7 @@ export const libraryRuntime = {
   model: null,
   currentFolderId: "root",
   lastNonGuideScreen: "upload",
+  lastNonSettingsScreen: "upload",
   saveTimer: null,
   activeTheme: DEFAULT_THEME,
   loadedFromLegacyStorage: false,
