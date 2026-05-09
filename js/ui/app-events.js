@@ -1,7 +1,7 @@
 import { openAnalyticsScreen } from "../analytics/analytics-renderer.js";
 import { DEFAULT_GOAL_PERCENT, DEFAULT_THEME, DEFAULT_VOLUME, demoQuizData } from "../core/constants.js";
 import { elements } from "../core/dom.js";
-import { showError, showScreen } from "../core/screens.js";
+import { getActiveScreenName, showError, showScreen } from "../core/screens.js";
 import { libraryRuntime } from "../core/state.js";
 import { clamp, normalizeGoalPercent } from "../core/utils.js";
 import { closeFolderDeleteModal, closeQuizDeleteModal, confirmFolderDelete, confirmQuizDelete } from "../library/delete-modals.js";
@@ -18,6 +18,63 @@ import { closeGuideScreen, goToMainMenu, openGuideScreen } from "./navigation.js
 import { closeAllMiniPopups, handleGlobalPopupClose } from "./popups.js";
 import { setGoalPercent, setNotificationVolume, setTheme, updateLibraryNote } from "./settings.js";
 import { initializeUploadEvents } from "./upload-events.js";
+
+function isTextEntryTarget(target) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
+
+function isInteractiveTarget(target) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(target.closest("button, a, [role='button']"));
+}
+
+function handleQuizAnswerShortcut(event) {
+  if (event.ctrlKey || event.altKey || event.metaKey || isTextEntryTarget(event.target)) {
+    return;
+  }
+
+  const optionIndex = Number(event.key) - 1;
+  if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 3) {
+    return;
+  }
+
+  if (getActiveScreenName() !== "quiz") {
+    return;
+  }
+
+  const optionButtons = Array.from(elements.optionsContainer.querySelectorAll(".option-btn"));
+  const optionButton = optionButtons[optionIndex];
+  if (!optionButton || optionButton.disabled) {
+    return;
+  }
+
+  event.preventDefault();
+  optionButton.click();
+}
+
+function handleQuizNextShortcut(event) {
+  if (event.ctrlKey || event.altKey || event.metaKey || isTextEntryTarget(event.target) || isInteractiveTarget(event.target)) {
+    return;
+  }
+
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+
+  if (getActiveScreenName() !== "quiz" || elements.nextBtn.disabled) {
+    return;
+  }
+
+  event.preventDefault();
+  nextQuestion();
+}
 
 export function initializeActionEvents() {
   elements.nextBtn.addEventListener("click", nextQuestion);
@@ -118,6 +175,8 @@ export function initializeActionEvents() {
   });
 
   document.addEventListener("click", handleGlobalPopupClose);
+  document.addEventListener("keydown", handleQuizAnswerShortcut);
+  document.addEventListener("keydown", handleQuizNextShortcut);
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
       closeAllMiniPopups();
