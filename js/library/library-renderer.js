@@ -3,6 +3,7 @@ import { elements } from "../core/dom.js";
 import { appendChildren, createElement } from "../core/utils.js";
 import { canGenerateOverview, getQuizTypeLabel } from "./overview-quizzes.js";
 import { getCurrentFolder, getFolder, getQuiz } from "../storage/library-model.js";
+import { buildQuizProgressNote } from "./quiz-progress-note.js";
 
 export function formatCount(count, singularLabel, pluralLabel) {
   return `${count} ${count === 1 ? singularLabel : pluralLabel}`;
@@ -96,6 +97,32 @@ export function createSavedItemActions(actionConfigs) {
   );
 }
 
+export function createQuizProgressNoteElement(note) {
+  if (!note) {
+    return null;
+  }
+
+  const noteElement = createElement("div", `quiz-progress-note ${note.className}`);
+  noteElement.setAttribute("aria-label", note.ariaLabel);
+  noteElement.title = note.detailText;
+
+  appendChildren(noteElement, [
+    createElement("span", "quiz-progress-note-label", note.label),
+    createElement("span", "quiz-progress-note-meta", note.meta)
+  ]);
+  return noteElement;
+}
+
+export function createQuizProgressNotePeekElement(note) {
+  if (!note) {
+    return null;
+  }
+
+  const peekElement = createElement("span", `quiz-progress-note-peek ${note.className}`);
+  peekElement.setAttribute("aria-hidden", "true");
+  return peekElement;
+}
+
 export function createQuizActionMenu(quizId) {
   const menu = createElement("div", "saved-action-menu");
   menu.setAttribute("data-quiz-id", quizId);
@@ -183,6 +210,13 @@ export function renderLibraryList() {
 
   quizzes.forEach((quiz) => {
     const item = createElement("li", "saved-item saved-item-quiz");
+    const progressNote = buildQuizProgressNote(quiz);
+    const progressNotePeekElement = createQuizProgressNotePeekElement(progressNote);
+    const progressNoteElement = createQuizProgressNoteElement(progressNote);
+    if (progressNote) {
+      item.classList.add("has-progress-note");
+      item.setAttribute("data-progress-state", progressNote.state);
+    }
     const actions = createElement("div", "saved-item-actions");
     actions.appendChild(
       createActionButton({
@@ -194,6 +228,8 @@ export function renderLibraryList() {
     );
     actions.appendChild(createQuizActionMenu(quiz.id));
     appendChildren(item, [
+      progressNotePeekElement,
+      progressNoteElement,
       createSavedItemCopy(getQuizTypeLabel(quiz), quiz.name, getQuizMetaText(quiz)),
       actions
     ]);

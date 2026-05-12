@@ -1,5 +1,5 @@
 import { openAnalyticsScreen } from "../analytics/analytics-renderer.js";
-import { DEFAULT_GOAL_PERCENT, DEFAULT_THEME, DEFAULT_VOLUME, demoQuizData } from "../core/constants.js";
+import { DEFAULT_GOAL_PERCENT, DEFAULT_PROGRESS_NOTE_SLIDE, DEFAULT_THEME, DEFAULT_VOLUME, demoQuizData } from "../core/constants.js";
 import { elements } from "../core/dom.js";
 import { getActiveScreenName, showError, showScreen } from "../core/screens.js";
 import { libraryRuntime } from "../core/state.js";
@@ -16,7 +16,7 @@ import { initializeQuizCreatorEvents } from "../creator/quiz-creator-events.js";
 import { initializeAudioUnlockEvents } from "./audio.js";
 import { closeGuideScreen, goToMainMenu, openGuideScreen } from "./navigation.js";
 import { closeAllMiniPopups, handleGlobalPopupClose } from "./popups.js";
-import { setGoalPercent, setNotificationVolume, setTheme, updateLibraryNote } from "./settings.js";
+import { setGoalPercent, setNotificationVolume, setProgressNoteSlideMode, setTheme, updateLibraryNote } from "./settings.js";
 import { initializeUploadEvents } from "./upload-events.js";
 
 function isTextEntryTarget(target) {
@@ -174,6 +174,21 @@ export function initializeActionEvents() {
     setTheme(themeName, true);
   });
 
+  elements.progressNoteSlideOptions.addEventListener("click", function (event) {
+    if (!(event.target instanceof Element)) {
+      return;
+    }
+    const slideButton = event.target.closest("[data-progress-note-slide]");
+    if (!slideButton) {
+      return;
+    }
+    const slideMode = slideButton.getAttribute("data-progress-note-slide");
+    if (!slideMode) {
+      return;
+    }
+    setProgressNoteSlideMode(slideMode, true);
+  });
+
   document.addEventListener("click", handleGlobalPopupClose);
   document.addEventListener("keydown", handleQuizAnswerShortcut);
   document.addEventListener("keydown", handleQuizNextShortcut);
@@ -196,10 +211,12 @@ export async function initializeApp() {
   closeAllMiniPopups();
   setNotificationVolume(DEFAULT_VOLUME, false);
   setGoalPercent(DEFAULT_GOAL_PERCENT, false);
+  setProgressNoteSlideMode(DEFAULT_PROGRESS_NOTE_SLIDE, false);
   await initializeLibraryStorage();
   setTheme(libraryRuntime.model.settings.theme, false);
   setNotificationVolume(libraryRuntime.model.settings.volume, false);
   setGoalPercent(libraryRuntime.model.settings.goalPercent, false);
+  setProgressNoteSlideMode(libraryRuntime.model.settings.progressNoteSlide, false);
   updateLibraryNote();
   refreshLibraryUI();
 }

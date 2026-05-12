@@ -93,6 +93,8 @@ body.theme-aero-frutiger .library-path-btn,
 body.theme-aero-frutiger .saved-empty,
 body.theme-aero-frutiger .saved-item,
 body.theme-aero-frutiger .saved-item-type,
+body.theme-aero-frutiger .quiz-progress-note,
+body.theme-aero-frutiger .quiz-progress-note-peek,
 body.theme-aero-frutiger .saved-action-menu-panel,
 body.theme-aero-frutiger .quiz-creator-question-card,
 body.theme-aero-frutiger .quiz-creator-option-row,
@@ -297,6 +299,30 @@ body.theme-aero-frutiger .saved-item {
   border-radius: 28px 18px 34px 18px;
 }
 
+body.theme-aero-frutiger .saved-item-quiz.has-progress-note,
+body.theme-aero-frutiger .saved-item-quiz.has-progress-note:hover,
+body.theme-aero-frutiger .saved-item-quiz.has-progress-note:focus-within {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.theme-aero-frutiger .saved-item-quiz.has-progress-note::after {
+  border-color: var(--aero-glass-border);
+  background:
+    linear-gradient(180deg, rgba(124, 226, 230, 0.5), rgba(72, 210, 221, 0.32) 48%, rgba(15, 142, 190, 0.22)),
+    linear-gradient(115deg, rgba(182, 255, 242, 0.2), transparent 34%);
+  box-shadow: var(--card-shadow);
+  -webkit-backdrop-filter: blur(22px) saturate(1.55);
+  backdrop-filter: blur(22px) saturate(1.55);
+}
+
+body.theme-aero-frutiger .saved-item-quiz.has-progress-note:hover::after,
+body.theme-aero-frutiger .saved-item-quiz.has-progress-note:focus-within::after {
+  border-color: rgba(205, 255, 249, 0.82);
+  box-shadow: 0 16px 30px rgba(0, 119, 168, 0.24), inset 0 1px 0 rgba(213, 255, 250, 0.7);
+}
+
 body.theme-aero-frutiger .saved-item::before {
   width: 7px;
   top: 16px;
@@ -312,6 +338,8 @@ body.theme-aero-frutiger .saved-action-menu-panel {
 }
 
 body.theme-aero-frutiger .saved-item-type,
+body.theme-aero-frutiger .quiz-progress-note,
+body.theme-aero-frutiger .quiz-progress-note-peek,
 body.theme-aero-frutiger .guide-action-chip,
 body.theme-aero-frutiger .guide-status-chip,
 body.theme-aero-frutiger .analytics-score-chip,
@@ -320,6 +348,26 @@ body.theme-aero-frutiger .analytics-answer-badge {
   background:
     linear-gradient(180deg, rgba(190, 255, 247, 0.62), rgba(110, 232, 213, 0.54)),
     var(--accent-soft);
+}
+
+body.theme-aero-frutiger .quiz-progress-note {
+  border-radius: 12px 10px 15px 9px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 236, 0.72), rgba(255, 247, 182, 0.68)),
+    var(--quiz-progress-note-bg);
+  box-shadow: var(--quiz-progress-note-shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.35);
+  backdrop-filter: blur(16px) saturate(1.35);
+}
+
+body.theme-aero-frutiger .quiz-progress-note-peek {
+  border-radius: 0 10px 10px 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 236, 0.72), rgba(255, 247, 182, 0.68)),
+    var(--quiz-progress-note-bg);
+  box-shadow: 0 10px 18px rgba(0, 119, 168, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+  backdrop-filter: blur(12px) saturate(1.25);
 }
 
 body.theme-aero-frutiger .option-btn {

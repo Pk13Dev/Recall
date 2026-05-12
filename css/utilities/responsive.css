@@ -119,6 +119,26 @@
     align-items: flex-start;
   }
 
+  body[data-progress-note-slide] .saved-item-quiz.has-progress-note {
+    --quiz-progress-note-hidden-transform: translateY(0);
+    --quiz-progress-note-visible-transform: translateY(calc(-100% - 0.35rem));
+  }
+
+  body[data-progress-note-slide] .quiz-progress-note {
+    right: 0.65rem;
+    top: 0.55rem;
+    min-width: min(9rem, calc(100% - 1.3rem));
+    max-width: calc(100% - 1.3rem);
+  }
+
+  .quiz-progress-note-label {
+    font-size: 0.84rem;
+  }
+
+  .quiz-progress-note-meta {
+    font-size: 0.7rem;
+  }
+
   .saved-item-copy {
     width: 100%;
   }

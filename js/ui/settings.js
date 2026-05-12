@@ -1,4 +1,4 @@
-import { DEFAULT_GOAL_PERCENT, DEFAULT_THEME, THEME_LABELS, THEMES } from "../core/constants.js";
+import { DEFAULT_GOAL_PERCENT, DEFAULT_PROGRESS_NOTE_SLIDE, DEFAULT_THEME, PROGRESS_NOTE_SLIDE_LABELS, PROGRESS_NOTE_SLIDES, THEME_LABELS, THEMES } from "../core/constants.js";
 import { elements, screens } from "../core/dom.js";
 import { libraryRuntime, quizState } from "../core/state.js";
 import { clamp, normalizeGoalPercent } from "../core/utils.js";
@@ -11,6 +11,14 @@ export function isValidTheme(themeName) {
 
 export function formatThemeName(themeName) {
   return THEME_LABELS[themeName] || THEME_LABELS.light;
+}
+
+export function isValidProgressNoteSlideMode(slideMode) {
+  return PROGRESS_NOTE_SLIDES.includes(slideMode);
+}
+
+export function formatProgressNoteSlideMode(slideMode) {
+  return PROGRESS_NOTE_SLIDE_LABELS[slideMode] || PROGRESS_NOTE_SLIDE_LABELS[DEFAULT_PROGRESS_NOTE_SLIDE];
 }
 
 export function setLibraryNote(message) {
@@ -43,6 +51,26 @@ export function setTheme(themeName, shouldPersist) {
 
   if (libraryRuntime.model) {
     libraryRuntime.model.settings.theme = nextTheme;
+    if (shouldPersist) {
+      scheduleLibrarySave();
+    }
+  }
+}
+
+export function setProgressNoteSlideMode(slideMode, shouldPersist) {
+  const nextSlideMode = isValidProgressNoteSlideMode(slideMode) ? slideMode : DEFAULT_PROGRESS_NOTE_SLIDE;
+  document.body.setAttribute("data-progress-note-slide", nextSlideMode);
+  elements.progressNoteSlideValue.textContent = formatProgressNoteSlideMode(nextSlideMode);
+
+  const slideButtons = Array.from(elements.progressNoteSlideOptions.querySelectorAll("[data-progress-note-slide]"));
+  slideButtons.forEach((button) => {
+    const isActive = button.getAttribute("data-progress-note-slide") === nextSlideMode;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+
+  if (libraryRuntime.model) {
+    libraryRuntime.model.settings.progressNoteSlide = nextSlideMode;
     if (shouldPersist) {
       scheduleLibrarySave();
     }

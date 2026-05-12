@@ -34,6 +34,13 @@
   --warning: #c27b12;
   --warning-soft: #fff1d6;
   --warning-text: #6d4200;
+  --quiz-progress-note-bg: #fff7c8;
+  --quiz-progress-note-border: #dccb75;
+  --quiz-progress-note-shadow: 0 10px 18px rgba(82, 70, 25, 0.16), 0 2px 0 rgba(255, 255, 255, 0.5) inset;
+  --quiz-progress-note-pin: rgba(255, 255, 255, 0.48);
+  --quiz-progress-good-text: var(--success-text);
+  --quiz-progress-steady-text: var(--warning-text);
+  --quiz-progress-attention-text: var(--danger);
   --focus-ring: rgba(78, 123, 114, 0.45);
   --focus-ring-soft: rgba(78, 123, 114, 0.28);
   --card-shadow: 0 18px 42px rgba(35, 48, 44, 0.08), 0 2px 6px rgba(35, 48, 44, 0.03);

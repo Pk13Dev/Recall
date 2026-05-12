@@ -63,6 +63,16 @@ export const DEFAULT_GOAL_PERCENT = 70;
 
 export const DEFAULT_THEME = "light";
 
+export const DEFAULT_PROGRESS_NOTE_SLIDE = "side";
+
+export const PROGRESS_NOTE_SLIDES = ["side", "diag", "top"];
+
+export const PROGRESS_NOTE_SLIDE_LABELS = {
+  side: "Side slide",
+  diag: "Diag slide",
+  top: "Top slide"
+};
+
 export const DISPLAY_OPTION_COUNT = 4;
 
 export const MAX_QUESTIONS_PER_ATTEMPT = 20;

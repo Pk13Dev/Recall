@@ -31,6 +31,13 @@ body.theme-dark {
   --warning: #f0b44f;
   --warning-soft: #4a351a;
   --warning-text: #ffe4ad;
+  --quiz-progress-note-bg: #4b3f21;
+  --quiz-progress-note-border: #806d35;
+  --quiz-progress-note-shadow: 0 14px 26px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 230, 170, 0.16);
+  --quiz-progress-note-pin: rgba(255, 235, 180, 0.16);
+  --quiz-progress-good-text: #8dffba;
+  --quiz-progress-steady-text: #ffe1a0;
+  --quiz-progress-attention-text: #ff9aa7;
   --focus-ring: rgba(111, 167, 255, 0.42);
   --focus-ring-soft: rgba(111, 167, 255, 0.28);
   --card-shadow: 0 20px 48px rgba(1, 4, 9, 0.38), 0 2px 10px rgba(0, 0, 0, 0.18);
@@ -80,6 +87,13 @@ body.theme-neon {
   --warning: #ffc857;
   --warning-soft: #443512;
   --warning-text: #ffedbc;
+  --quiz-progress-note-bg: #2f2940;
+  --quiz-progress-note-border: #8c70d6;
+  --quiz-progress-note-shadow: 0 0 22px rgba(0, 255, 213, 0.16), 0 16px 28px rgba(0, 0, 0, 0.34);
+  --quiz-progress-note-pin: rgba(0, 255, 213, 0.18);
+  --quiz-progress-good-text: #2dff91;
+  --quiz-progress-steady-text: #ffd467;
+  --quiz-progress-attention-text: #ff6f99;
   --focus-ring: rgba(0, 255, 213, 0.42);
   --focus-ring-soft: rgba(0, 255, 213, 0.28);
   --card-shadow: 0 20px 48px rgba(0, 0, 0, 0.42), 0 2px 10px rgba(0, 0, 0, 0.2);
@@ -124,6 +138,13 @@ body.theme-vibrant {
   --warning: #ffd166;
   --warning-soft: #4c3a18;
   --warning-text: #fff0c7;
+  --quiz-progress-note-bg: #3b3150;
+  --quiz-progress-note-border: #8f7bd8;
+  --quiz-progress-note-shadow: 0 18px 34px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --quiz-progress-note-pin: rgba(255, 255, 255, 0.14);
+  --quiz-progress-good-text: #87ffc4;
+  --quiz-progress-steady-text: #ffde7a;
+  --quiz-progress-attention-text: #ff8ea9;
   --focus-ring: rgba(121, 214, 255, 0.42);
   --focus-ring-soft: rgba(121, 214, 255, 0.28);
   --card-shadow: 0 22px 54px rgba(0, 0, 0, 0.42), 0 2px 10px rgba(0, 0, 0, 0.2);
@@ -144,6 +165,10 @@ body.theme-vibrant {
 
 body.theme-light {
   --page-bg: linear-gradient(170deg, #f7f8f5, #eef2ef);
+  --quiz-progress-note-bg: #fff7c8;
+  --quiz-progress-note-border: #dccb75;
+  --quiz-progress-note-shadow: 0 10px 18px rgba(82, 70, 25, 0.16), 0 2px 0 rgba(255, 255, 255, 0.5) inset;
+  --quiz-progress-note-pin: rgba(255, 255, 255, 0.48);
 }
 
 body.theme-retro {
@@ -184,6 +209,13 @@ body.theme-retro {
   --warning: #74602b;
   --warning-soft: #c8bd93;
   --warning-text: #2f260d;
+  --quiz-progress-note-bg: #d3c98d;
+  --quiz-progress-note-border: #1c2510;
+  --quiz-progress-note-shadow: 3px 3px 0 rgba(20, 29, 11, 0.44);
+  --quiz-progress-note-pin: #e1d9a8;
+  --quiz-progress-good-text: #005f23;
+  --quiz-progress-steady-text: #5d4300;
+  --quiz-progress-attention-text: #b00000;
   --focus-ring: rgba(23, 33, 13, 0.5);
   --focus-ring-soft: rgba(23, 33, 13, 0.24);
   --card-shadow: 4px 4px 0 rgba(20, 29, 11, 0.34);
@@ -244,6 +276,13 @@ body.theme-aero-frutiger {
   --warning: #e0aa22;
   --warning-soft: rgba(255, 244, 181, 0.75);
   --warning-text: #72540b;
+  --quiz-progress-note-bg: rgba(255, 248, 185, 0.86);
+  --quiz-progress-note-border: rgba(255, 255, 232, 0.8);
+  --quiz-progress-note-shadow: 0 16px 30px rgba(0, 119, 168, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --quiz-progress-note-pin: rgba(255, 255, 255, 0.56);
+  --quiz-progress-good-text: #08733f;
+  --quiz-progress-steady-text: #72540b;
+  --quiz-progress-attention-text: #bf1f5a;
   --focus-ring: rgba(0, 185, 237, 0.48);
   --focus-ring-soft: rgba(0, 185, 237, 0.26);
   --card-shadow: 0 26px 54px rgba(0, 65, 110, 0.22), inset 0 1px 0 rgba(210, 255, 250, 0.54), inset 0 -18px 42px rgba(0, 132, 168, 0.18);

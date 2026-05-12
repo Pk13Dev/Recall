@@ -33,6 +33,8 @@ export const elements = {
   appHomeBtn: document.getElementById("app-home-btn"),
   themeValue: document.getElementById("theme-value"),
   themeOptions: document.getElementById("theme-options"),
+  progressNoteSlideValue: document.getElementById("progress-note-slide-value"),
+  progressNoteSlideOptions: document.getElementById("progress-note-slide-options"),
   volumeControl: document.getElementById("volume-control"),
   volumeValue: document.getElementById("volume-value"),
   goalControl: document.getElementById("goal-control"),

@@ -1,5 +1,5 @@
 import { createDefaultAnalyticsModel, normalizeAnalyticsModel } from "../analytics/analytics-model.js";
-import { DEFAULT_GOAL_PERCENT, DEFAULT_THEME, DEFAULT_VOLUME, ROOT_LIBRARY_LABEL, THEMES } from "../core/constants.js";
+import { DEFAULT_GOAL_PERCENT, DEFAULT_PROGRESS_NOTE_SLIDE, DEFAULT_THEME, DEFAULT_VOLUME, PROGRESS_NOTE_SLIDES, ROOT_LIBRARY_LABEL, THEMES } from "../core/constants.js";
 import { libraryRuntime } from "../core/state.js";
 import { clamp, normalizeGoalPercent } from "../core/utils.js";
 import { validateQuizData } from "../quiz/quiz-validation.js";
@@ -22,7 +22,12 @@ export function createDefaultLibraryModel() {
     },
     quizzes: {},
     counters: { folder: 0, quiz: 0 },
-    settings: { volume: DEFAULT_VOLUME, theme: DEFAULT_THEME, goalPercent: DEFAULT_GOAL_PERCENT },
+    settings: {
+      volume: DEFAULT_VOLUME,
+      theme: DEFAULT_THEME,
+      goalPercent: DEFAULT_GOAL_PERCENT,
+      progressNoteSlide: DEFAULT_PROGRESS_NOTE_SLIDE
+    },
     flags: { legacyImported: false },
     analytics: createDefaultAnalyticsModel()
   };
@@ -45,6 +50,13 @@ export function normalizeLibraryModel(rawModel) {
       }
 
     model.settings.goalPercent = normalizeGoalPercent(rawModel.settings.goalPercent);
+
+    if (
+      typeof rawModel.settings.progressNoteSlide === "string" &&
+      PROGRESS_NOTE_SLIDES.includes(rawModel.settings.progressNoteSlide)
+    ) {
+      model.settings.progressNoteSlide = rawModel.settings.progressNoteSlide;
+    }
   }
 
   if (rawModel.flags && typeof rawModel.flags === "object") {
