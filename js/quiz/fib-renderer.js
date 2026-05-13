@@ -9,6 +9,7 @@ const FIB_MAX_ATTEMPTS = 2;
 const TOUCH_DRAG_CLICK_SUPPRESSION_MS = 220;
 const TOUCH_DRAG_START_DISTANCE = 8;
 const SUCCESS_FIREWORK_STAGGER_MS = 90;
+const PLACEHOLDER_PATTERN = /\{\{([^}]+)\}\}/g;
 const FIB_FEEDBACK_CLASSES = ["is-correct", "is-misplaced", "is-bait", "is-missing"];
 const FIB_TOUCH_GHOST_RESET_CLASSES = [...FIB_FEEDBACK_CLASSES, "is-placed", "is-locked", "is-touch-origin"];
 
@@ -43,6 +44,34 @@ export function buildFillInBlankAnswerSummary(question, placements) {
 
 export function buildFillInBlankCorrectSummary(question) {
   return question.activeBlanks.map((blank) => `${blank.id}: ${blank.answer}`).join("; ");
+}
+
+function createFillInBlankState() {
+  return {
+    placements: new Map(),
+    selectedWordId: null,
+    attempts: 0,
+    attemptSummaries: [],
+    finalized: false,
+    lockedBlankIds: new Set(),
+    touchDrag: null,
+    lastTouchDragAt: 0
+  };
+}
+
+function createFillInBlankLayout() {
+  const wrapper = createElement("div", "fib-question");
+  const paragraph = createElement("p", "fib-paragraph");
+  const status = createElement("p", "fib-status");
+  const bank = createElement("div", "fib-bank");
+  const bankGrid = createElement("div", "fib-bank-grid");
+
+  status.setAttribute("aria-live", "polite");
+  bank.setAttribute("aria-label", "Possible answers");
+  bank.appendChild(bankGrid);
+  appendChildren(wrapper, [paragraph, bank, status]);
+
+  return { wrapper, paragraph, status, bank, bankGrid };
 }
 
 function hasFillInBlankHints(question) {
@@ -83,108 +112,162 @@ function configureHintButton(wrapper, hasQuestionHints) {
   };
 }
 
+function clearFillInBlankStatus(element) {
+  element.classList.remove(...FIB_FEEDBACK_CLASSES);
+}
+
+function getFilledBlankId(placements, wordId) {
+  for (const [blankId, placedWordId] of placements.entries()) {
+    if (placedWordId === wordId) {
+      return blankId;
+    }
+  }
+  return null;
+}
+
+function getBlankAriaLabel(blank, blankIndex, placedWord) {
+  if (!placedWord) {
+    return `Blank ${blankIndex + 1}${blank.hint ? `, hint: ${blank.hint}` : ""}`;
+  }
+
+  return `Blank ${blankIndex + 1}, ${placedWord.text}`;
+}
+
+function buildFillInBlankAttemptSummary(question, placements, attemptNumber) {
+  const results = question.activeBlanks.map((blank) => {
+    const word = getFillInBlankWordById(question, placements.get(blank.id));
+    const status = getFillInBlankWordStatus(word, blank.id);
+
+    return {
+      blankId: blank.id,
+      selectedAnswer: word ? word.text : "",
+      correctAnswer: blank.answer,
+      status,
+      isCorrect: status === "correct"
+    };
+  });
+  const correctCount = results.filter((result) => result.isCorrect).length;
+
+  return {
+    attemptNumber,
+    totalBlanks: results.length,
+    correctCount,
+    wrongCount: Math.max(results.length - correctCount, 0),
+    misplacedCount: results.filter((result) => result.status === "misplaced").length,
+    baitCount: results.filter((result) => result.status === "bait").length,
+    missingCount: results.filter((result) => result.status === "missing").length,
+    isCorrect: correctCount === results.length,
+    results
+  };
+}
+
+function createTouchDragGhost(wordButton, clientX, clientY) {
+  const ghost = wordButton.cloneNode(true);
+  ghost.classList.remove(...FIB_TOUCH_GHOST_RESET_CLASSES);
+  ghost.classList.add("fib-drag-ghost", "is-selected");
+  ghost.removeAttribute("draggable");
+  ghost.style.left = `${clientX}px`;
+  ghost.style.top = `${clientY}px`;
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
 export function resetQuizHintButton() {
   resetHintButton(null, false);
 }
 
 export function renderFillInBlankQuestion(currentQuestion) {
-  elements.questionText.textContent = currentQuestion.title || currentQuestion.question;
-  elements.optionsContainer.classList.add("options-container-fib");
-  elements.nextBtn.textContent = "Submit Answer";
+  const renderer = new FillInBlankRenderer(currentQuestion);
+  renderer.mount();
+}
 
-  const state = {
-    placements: new Map(),
-    selectedWordId: null,
-    attempts: 0,
-    attemptSummaries: [],
-    finalized: false,
-    lockedBlankIds: new Set(),
-    touchDrag: null,
-    lastTouchDragAt: 0
-  };
-
-  const wrapper = createElement("div", "fib-question");
-  const paragraph = createElement("p", "fib-paragraph");
-  const status = createElement("p", "fib-status");
-  const bank = createElement("div", "fib-bank");
-  const bankGrid = createElement("div", "fib-bank-grid");
-  const wordElementsById = new Map();
-  const blankElementsById = new Map();
-
-  status.setAttribute("aria-live", "polite");
-  bank.setAttribute("aria-label", "Possible answers");
-  bank.appendChild(bankGrid);
-  appendChildren(wrapper, [paragraph, bank, status]);
-  elements.optionsContainer.appendChild(wrapper);
-
-  function getWordElement(wordId) {
-    return wordElementsById.get(wordId) || null;
+class FillInBlankRenderer {
+  constructor(question) {
+    this.question = question;
+    this.state = createFillInBlankState();
+    this.dom = createFillInBlankLayout();
+    this.wordElementsById = new Map();
+    this.blankElementsById = new Map();
   }
 
-  function getBlankElement(blankId) {
-    return blankElementsById.get(blankId) || null;
+  mount() {
+    elements.questionText.textContent = this.question.title || this.question.question;
+    elements.optionsContainer.classList.add("options-container-fib");
+    elements.nextBtn.textContent = "Submit Answer";
+    elements.optionsContainer.appendChild(this.dom.wrapper);
+
+    this.renderParagraph();
+    this.bindBankDropTarget();
+    this.renderWordBank();
+    configureHintButton(this.dom.wrapper, hasFillInBlankHints(this.question));
+
+    quizState.submitCurrentAnswer = () => this.submitAnswer();
+    this.syncUi();
   }
 
-  function clearFillInBlankStatus(element) {
-    element.classList.remove(...FIB_FEEDBACK_CLASSES);
+  renderWordBank() {
+    this.question.wordBank.forEach((word) => {
+      this.dom.bankGrid.appendChild(this.createWordChip(word));
+    });
   }
 
-  function setSelectedWord(wordId) {
-    state.selectedWordId = state.selectedWordId === wordId ? null : wordId;
-    updateFillInBlankUi();
+  getWordElement(wordId) {
+    return this.wordElementsById.get(wordId) || null;
   }
 
-  function clearSubmittedFeedback() {
-    if (state.finalized) {
+  getBlankElement(blankId) {
+    return this.blankElementsById.get(blankId) || null;
+  }
+
+  getFilledBlankIdForWord(wordId) {
+    return getFilledBlankId(this.state.placements, wordId);
+  }
+
+  setSelectedWord(wordId) {
+    this.state.selectedWordId = this.state.selectedWordId === wordId ? null : wordId;
+    this.syncUi();
+  }
+
+  clearSubmittedFeedback() {
+    if (this.state.finalized) {
       return;
     }
 
-    wrapper.classList.remove("has-submitted-feedback");
-    wrapper.querySelectorAll(".fib-blank:not(.is-locked), .fib-word:not(.is-locked)").forEach((element) => {
-      clearFillInBlankStatus(element);
-    });
-    status.textContent = "";
+    this.dom.wrapper.classList.remove("has-submitted-feedback");
+    this.dom.wrapper.querySelectorAll(".fib-blank:not(.is-locked), .fib-word:not(.is-locked)").forEach(clearFillInBlankStatus);
+    this.dom.status.textContent = "";
   }
 
-  function getFilledBlankIdForWord(wordId) {
-    for (const [blankId, placedWordId] of state.placements.entries()) {
-      if (placedWordId === wordId) {
-        return blankId;
-      }
-    }
-    return null;
-  }
-
-  function moveWordToBank(wordId) {
-    const currentBlankId = getFilledBlankIdForWord(wordId);
+  moveWordToBank(wordId) {
+    const currentBlankId = this.getFilledBlankIdForWord(wordId);
     if (currentBlankId) {
-      if (state.lockedBlankIds.has(currentBlankId)) {
+      if (this.state.lockedBlankIds.has(currentBlankId)) {
         return false;
       }
-      state.placements.delete(currentBlankId);
+      this.state.placements.delete(currentBlankId);
     }
 
-    const wordElement = getWordElement(wordId);
+    const wordElement = this.getWordElement(wordId);
     if (wordElement) {
-      bankGrid.appendChild(wordElement);
+      this.dom.bankGrid.appendChild(wordElement);
     }
     return true;
   }
 
-  function placeWordInBlank(wordId, blankId) {
-    if (state.finalized || state.lockedBlankIds.has(blankId)) {
+  placeWordInBlank(wordId, blankId) {
+    if (this.state.finalized || this.state.lockedBlankIds.has(blankId)) {
       return;
     }
 
-    const wordElement = getWordElement(wordId);
-    const blankElement = getBlankElement(blankId);
+    const wordElement = this.getWordElement(wordId);
+    const blankElement = this.getBlankElement(blankId);
     if (!wordElement || !blankElement) {
       return;
     }
 
-    const previousBlankId = getFilledBlankIdForWord(wordId);
-    const existingWordId = state.placements.get(blankId);
-    if (previousBlankId && state.lockedBlankIds.has(previousBlankId)) {
+    const previousBlankId = this.getFilledBlankIdForWord(wordId);
+    const existingWordId = this.state.placements.get(blankId);
+    if (previousBlankId && this.state.lockedBlankIds.has(previousBlankId)) {
       return;
     }
 
@@ -192,159 +275,128 @@ export function renderFillInBlankQuestion(currentQuestion) {
       return;
     }
 
-    clearSubmittedFeedback();
+    this.clearSubmittedFeedback();
 
     if (previousBlankId) {
-      state.placements.delete(previousBlankId);
+      this.state.placements.delete(previousBlankId);
     }
 
-    state.placements.set(blankId, wordId);
+    this.state.placements.set(blankId, wordId);
     blankElement.appendChild(wordElement);
-    state.selectedWordId = null;
-    updateFillInBlankUi();
+    this.state.selectedWordId = null;
+    this.syncUi();
   }
 
-  function handleBlankAction(blankId) {
-    if (state.finalized || state.lockedBlankIds.has(blankId)) {
+  handleBlankAction(blankId) {
+    if (this.state.finalized || this.state.lockedBlankIds.has(blankId)) {
       return;
     }
 
-    if (state.selectedWordId) {
-      placeWordInBlank(state.selectedWordId, blankId);
+    if (this.state.selectedWordId) {
+      this.placeWordInBlank(this.state.selectedWordId, blankId);
       return;
     }
 
-    const wordId = state.placements.get(blankId);
+    const wordId = this.state.placements.get(blankId);
     if (wordId) {
-      setSelectedWord(wordId);
+      this.setSelectedWord(wordId);
     }
   }
 
-  function isReadyToSubmit() {
-    return currentQuestion.activeBlanks.every((blank) => state.placements.has(blank.id));
+  isReadyToSubmit() {
+    return this.question.activeBlanks.every((blank) => this.state.placements.has(blank.id));
   }
 
-  function buildFillInBlankAttemptSummary(attemptNumber) {
-    const results = currentQuestion.activeBlanks.map((blank) => {
-      const word = getFillInBlankWordById(currentQuestion, state.placements.get(blank.id));
-      const statusName = getFillInBlankWordStatus(word, blank.id);
-      return {
-        blankId: blank.id,
-        selectedAnswer: word ? word.text : "",
-        correctAnswer: blank.answer,
-        status: statusName,
-        isCorrect: statusName === "correct"
-      };
-    });
-    const correctCount = results.filter((result) => result.isCorrect).length;
-
-    return {
-      attemptNumber,
-      totalBlanks: results.length,
-      correctCount,
-      wrongCount: Math.max(results.length - correctCount, 0),
-      misplacedCount: results.filter((result) => result.status === "misplaced").length,
-      baitCount: results.filter((result) => result.status === "bait").length,
-      missingCount: results.filter((result) => result.status === "missing").length,
-      isCorrect: correctCount === results.length,
-      results
-    };
-  }
-
-  function updateFillInBlankUi() {
-    currentQuestion.activeBlanks.forEach((blank, blankIndex) => {
-      const blankElement = getBlankElement(blank.id);
+  syncUi() {
+    this.question.activeBlanks.forEach((blank, blankIndex) => {
+      const blankElement = this.getBlankElement(blank.id);
       if (!blankElement) {
         return;
       }
 
-      const placedWordId = state.placements.get(blank.id);
-      const placedWord = getFillInBlankWordById(currentQuestion, placedWordId);
+      const placedWordId = this.state.placements.get(blank.id);
+      const placedWord = getFillInBlankWordById(this.question, placedWordId);
       const isEmpty = !placedWordId;
+
       blankElement.classList.toggle("is-empty", isEmpty);
       blankElement.classList.toggle("is-filled", !isEmpty);
-      blankElement.classList.toggle("is-selected", placedWordId === state.selectedWordId);
-      blankElement.classList.toggle("is-target", Boolean(state.selectedWordId) && !state.finalized);
-      blankElement.classList.toggle("is-locked", state.lockedBlankIds.has(blank.id));
-      blankElement.setAttribute(
-        "aria-label",
-        isEmpty
-          ? `Blank ${blankIndex + 1}${blank.hint ? `, hint: ${blank.hint}` : ""}`
-          : `Blank ${blankIndex + 1}, ${placedWord ? placedWord.text : "filled"}`
-      );
+      blankElement.classList.toggle("is-selected", placedWordId === this.state.selectedWordId);
+      blankElement.classList.toggle("is-target", Boolean(this.state.selectedWordId) && !this.state.finalized);
+      blankElement.classList.toggle("is-locked", this.state.lockedBlankIds.has(blank.id));
+      blankElement.setAttribute("aria-label", getBlankAriaLabel(blank, blankIndex, placedWord));
     });
 
-    currentQuestion.wordBank.forEach((word) => {
-      const wordElement = getWordElement(word.id);
+    this.question.wordBank.forEach((word) => {
+      const wordElement = this.getWordElement(word.id);
       if (!wordElement) {
         return;
       }
 
-      const filledBlankId = getFilledBlankIdForWord(word.id);
-      const isLocked = filledBlankId && state.lockedBlankIds.has(filledBlankId);
-      wordElement.classList.toggle("is-selected", state.selectedWordId === word.id);
+      const filledBlankId = this.getFilledBlankIdForWord(word.id);
+      const isLocked = filledBlankId && this.state.lockedBlankIds.has(filledBlankId);
+      wordElement.classList.toggle("is-selected", this.state.selectedWordId === word.id);
       wordElement.classList.toggle("is-placed", Boolean(filledBlankId));
       wordElement.classList.toggle("is-locked", Boolean(isLocked));
-      wordElement.draggable = !state.finalized && !isLocked;
-      wordElement.setAttribute("aria-pressed", state.selectedWordId === word.id ? "true" : "false");
+      wordElement.draggable = !this.state.finalized && !isLocked;
+      wordElement.setAttribute("aria-pressed", this.state.selectedWordId === word.id ? "true" : "false");
     });
 
-    elements.nextBtn.disabled = state.finalized ? false : !isReadyToSubmit();
+    elements.nextBtn.disabled = this.state.finalized ? false : !this.isReadyToSubmit();
   }
 
-  function renderFillInBlankFeedback(isFinal) {
-    wrapper.classList.add("has-submitted-feedback");
-    state.lockedBlankIds.clear();
+  renderFeedback(isFinal) {
+    this.dom.wrapper.classList.add("has-submitted-feedback");
+    this.state.lockedBlankIds.clear();
 
-    currentQuestion.activeBlanks.forEach((blank) => {
-      const blankElement = getBlankElement(blank.id);
-      const wordId = state.placements.get(blank.id);
-      const word = getFillInBlankWordById(currentQuestion, wordId);
-      const statusName = getFillInBlankWordStatus(word, blank.id);
+    this.question.activeBlanks.forEach((blank) => {
+      const blankElement = this.getBlankElement(blank.id);
+      const word = getFillInBlankWordById(this.question, this.state.placements.get(blank.id));
+      const status = getFillInBlankWordStatus(word, blank.id);
       if (!blankElement) {
         return;
       }
 
       clearFillInBlankStatus(blankElement);
-      blankElement.classList.add(`is-${statusName}`);
+      blankElement.classList.add(`is-${status}`);
 
-      if (statusName === "correct") {
-        state.lockedBlankIds.add(blank.id);
+      if (status === "correct") {
+        this.state.lockedBlankIds.add(blank.id);
       }
     });
 
-    currentQuestion.wordBank.forEach((word) => {
-      const wordElement = getWordElement(word.id);
-      const blankId = getFilledBlankIdForWord(word.id);
-      const statusName = getFillInBlankWordStatus(word, blankId);
+    this.question.wordBank.forEach((word) => {
+      const wordElement = this.getWordElement(word.id);
+      const blankId = this.getFilledBlankIdForWord(word.id);
+      const status = getFillInBlankWordStatus(word, blankId);
       if (!wordElement) {
         return;
       }
 
       clearFillInBlankStatus(wordElement);
       if (blankId) {
-        wordElement.classList.add(`is-${statusName}`);
+        wordElement.classList.add(`is-${status}`);
       }
     });
 
-    status.textContent = isFinal ? "" : "Try once more.";
-    updateFillInBlankUi();
+    this.dom.status.textContent = isFinal ? "" : "Try once more.";
+    this.syncUi();
   }
 
-  function submitFillInBlankAnswer() {
-    if (state.finalized || !isReadyToSubmit()) {
-      updateFillInBlankUi();
+  submitAnswer() {
+    if (this.state.finalized || !this.isReadyToSubmit()) {
+      this.syncUi();
       return;
     }
 
-    state.attempts += 1;
-    state.selectedWordId = null;
-    const attemptSummary = buildFillInBlankAttemptSummary(state.attempts);
-    state.attemptSummaries[state.attempts - 1] = attemptSummary;
-    const isCorrect = attemptSummary.isCorrect;
-    const isFinal = isCorrect || state.attempts >= FIB_MAX_ATTEMPTS;
+    this.state.attempts += 1;
+    this.state.selectedWordId = null;
 
-    renderFillInBlankFeedback(isFinal);
+    const attemptSummary = buildFillInBlankAttemptSummary(this.question, this.state.placements, this.state.attempts);
+    this.state.attemptSummaries[this.state.attempts - 1] = attemptSummary;
+
+    const isCorrect = attemptSummary.isCorrect;
+    const isFinal = isCorrect || this.state.attempts >= FIB_MAX_ATTEMPTS;
+    this.renderFeedback(isFinal);
 
     if (!isFinal) {
       elements.nextBtn.textContent = "Submit Again";
@@ -352,7 +404,11 @@ export function renderFillInBlankQuestion(currentQuestion) {
       return;
     }
 
-    state.finalized = true;
+    this.finalizeAnswer(isCorrect);
+  }
+
+  finalizeAnswer(isCorrect) {
+    this.state.finalized = true;
     quizState.hasAnswered = true;
     quizState.selectedIndex = 0;
     quizState.submitCurrentAnswer = null;
@@ -362,339 +418,345 @@ export function renderFillInBlankQuestion(currentQuestion) {
     if (isCorrect) {
       quizState.score += 1;
       playSound("win");
-      Array.from(wrapper.querySelectorAll(".fib-blank.is-correct")).forEach((blankElement, index) => {
-        window.setTimeout(() => triggerFireworks(blankElement), index * SUCCESS_FIREWORK_STAGGER_MS);
-      });
+      this.triggerSuccessEffects();
     } else {
       playSound("fail");
     }
 
-    recordQuestionAnalytics(currentQuestion, null, isCorrect, Date.now(), {
+    recordQuestionAnalytics(this.question, null, isCorrect, Date.now(), {
       questionType: "fib",
-      selectedOption: buildFillInBlankAnswerSummary(currentQuestion, state.placements),
-      correctOption: buildFillInBlankCorrectSummary(currentQuestion),
-      attemptCount: state.attempts,
-      fibAttempts: state.attemptSummaries.slice()
+      selectedOption: buildFillInBlankAnswerSummary(this.question, this.state.placements),
+      correctOption: buildFillInBlankCorrectSummary(this.question),
+      attemptCount: this.state.attempts,
+      fibAttempts: this.state.attemptSummaries.slice()
     });
     elements.scoreText.textContent = `Score: ${quizState.score}`;
-    updateFillInBlankUi();
+    this.syncUi();
   }
 
-  function clearTouchDragTarget() {
-    if (!state.touchDrag || !state.touchDrag.targetElement) {
+  triggerSuccessEffects() {
+    Array.from(this.dom.wrapper.querySelectorAll(".fib-blank.is-correct")).forEach((blankElement, index) => {
+      window.setTimeout(() => triggerFireworks(blankElement), index * SUCCESS_FIREWORK_STAGGER_MS);
+    });
+  }
+
+  clearTouchDragTarget() {
+    const touchDrag = this.state.touchDrag;
+    if (!touchDrag || !touchDrag.targetElement) {
       return;
     }
 
-    state.touchDrag.targetElement.classList.remove("is-dragover");
-    state.touchDrag.targetElement = null;
-    state.touchDrag.targetType = null;
-    state.touchDrag.targetBlankId = null;
+    touchDrag.targetElement.classList.remove("is-dragover");
+    touchDrag.targetElement = null;
+    touchDrag.targetType = null;
+    touchDrag.targetBlankId = null;
   }
 
-  function getTouchDropTarget(clientX, clientY) {
+  getTouchDropTarget(clientX, clientY) {
     const targetElement = document.elementFromPoint(clientX, clientY);
     if (!targetElement || !(targetElement instanceof Element)) {
       return null;
     }
 
     const blankElement = targetElement.closest(".fib-blank");
-    if (blankElement && wrapper.contains(blankElement)) {
+    if (blankElement && this.dom.wrapper.contains(blankElement)) {
       const blankId = blankElement.getAttribute("data-blank-id");
-      if (blankId && !state.lockedBlankIds.has(blankId)) {
+      if (blankId && !this.state.lockedBlankIds.has(blankId)) {
         return { type: "blank", element: blankElement, blankId };
       }
     }
 
     const bankElement = targetElement.closest(".fib-bank");
-    if (bankElement && bank.contains(bankElement)) {
-      return { type: "bank", element: bank };
+    if (bankElement && this.dom.bank.contains(bankElement)) {
+      return { type: "bank", element: this.dom.bank };
     }
 
     return null;
   }
 
-  function createTouchDragGhost(wordButton, clientX, clientY) {
-    const ghost = wordButton.cloneNode(true);
-    ghost.classList.remove(...FIB_TOUCH_GHOST_RESET_CLASSES);
-    ghost.classList.add("fib-drag-ghost", "is-selected");
-    ghost.removeAttribute("draggable");
-    ghost.style.left = `${clientX}px`;
-    ghost.style.top = `${clientY}px`;
-    document.body.appendChild(ghost);
-    return ghost;
+  updateTouchDragGhost(clientX, clientY) {
+    const touchDrag = this.state.touchDrag;
+    if (!touchDrag || !touchDrag.ghost) {
+      return;
+    }
+
+    touchDrag.ghost.style.left = `${clientX}px`;
+    touchDrag.ghost.style.top = `${clientY}px`;
   }
 
-  function updateTouchDragGhost(clientX, clientY) {
-    if (!state.touchDrag || !state.touchDrag.ghost) {
+  updateTouchDragTarget(clientX, clientY) {
+    const touchDrag = this.state.touchDrag;
+    if (!touchDrag) {
       return;
     }
 
-    state.touchDrag.ghost.style.left = `${clientX}px`;
-    state.touchDrag.ghost.style.top = `${clientY}px`;
-  }
-
-  function updateTouchDragTarget(clientX, clientY) {
-    if (!state.touchDrag) {
+    const dropTarget = this.getTouchDropTarget(clientX, clientY);
+    if (dropTarget && touchDrag.targetElement === dropTarget.element) {
       return;
     }
 
-    const dropTarget = getTouchDropTarget(clientX, clientY);
-    if (dropTarget && state.touchDrag.targetElement === dropTarget.element) {
-      return;
-    }
-
-    clearTouchDragTarget();
+    this.clearTouchDragTarget();
 
     if (!dropTarget) {
       return;
     }
 
     dropTarget.element.classList.add("is-dragover");
-    state.touchDrag.targetElement = dropTarget.element;
-    state.touchDrag.targetType = dropTarget.type;
-    state.touchDrag.targetBlankId = dropTarget.blankId || null;
+    touchDrag.targetElement = dropTarget.element;
+    touchDrag.targetType = dropTarget.type;
+    touchDrag.targetBlankId = dropTarget.blankId || null;
   }
 
-  function cleanupTouchDrag() {
-    if (!state.touchDrag) {
+  cleanupTouchDrag() {
+    const touchDrag = this.state.touchDrag;
+    if (!touchDrag) {
       return;
     }
 
-    clearTouchDragTarget();
-    if (state.touchDrag.ghost) {
-      state.touchDrag.ghost.remove();
+    this.clearTouchDragTarget();
+    if (touchDrag.ghost) {
+      touchDrag.ghost.remove();
     }
-    if (state.touchDrag.sourceElement) {
-      state.touchDrag.sourceElement.classList.remove("is-touch-origin");
+    if (touchDrag.sourceElement) {
+      touchDrag.sourceElement.classList.remove("is-touch-origin");
     }
 
-    state.touchDrag = null;
-    state.selectedWordId = null;
-    updateFillInBlankUi();
+    this.state.touchDrag = null;
+    this.state.selectedWordId = null;
+    this.syncUi();
   }
 
-  function finishTouchDrag(event, shouldDrop) {
-    if (!state.touchDrag || event.pointerId !== state.touchDrag.pointerId) {
+  finishTouchDrag(event, shouldDrop) {
+    const touchDrag = this.state.touchDrag;
+    if (!touchDrag || event.pointerId !== touchDrag.pointerId) {
       return;
     }
 
-    const touchDrag = state.touchDrag;
-    const wasActive = touchDrag.active;
-    if (wasActive && shouldDrop) {
-      const dropTarget = getTouchDropTarget(event.clientX, event.clientY);
+    if (touchDrag.active && shouldDrop) {
+      const dropTarget = this.getTouchDropTarget(event.clientX, event.clientY);
       if (dropTarget && dropTarget.type === "blank" && dropTarget.blankId) {
-        placeWordInBlank(touchDrag.wordId, dropTarget.blankId);
+        this.placeWordInBlank(touchDrag.wordId, dropTarget.blankId);
       } else if (dropTarget && dropTarget.type === "bank") {
-        clearSubmittedFeedback();
-        moveWordToBank(touchDrag.wordId);
+        this.clearSubmittedFeedback();
+        this.moveWordToBank(touchDrag.wordId);
       }
     }
 
-    if (wasActive) {
-      state.lastTouchDragAt = Date.now();
+    if (touchDrag.active) {
+      this.state.lastTouchDragAt = Date.now();
       event.preventDefault();
     }
 
-    cleanupTouchDrag();
+    this.cleanupTouchDrag();
   }
 
-  function createWordChip(word) {
+  handleWordClick(event, word, wordButton) {
+    event.stopPropagation();
+    if (Date.now() - this.state.lastTouchDragAt < TOUCH_DRAG_CLICK_SUPPRESSION_MS) {
+      event.preventDefault();
+      return;
+    }
+
+    if (this.state.finalized || wordButton.classList.contains("is-locked")) {
+      return;
+    }
+
+    if (this.state.selectedWordId === word.id && this.getFilledBlankIdForWord(word.id)) {
+      this.clearSubmittedFeedback();
+      this.moveWordToBank(word.id);
+      this.state.selectedWordId = null;
+      this.syncUi();
+      return;
+    }
+
+    this.setSelectedWord(word.id);
+  }
+
+  startTouchDrag(event, word, wordButton) {
+    if (event.pointerType === "mouse" || this.state.finalized || wordButton.classList.contains("is-locked")) {
+      return;
+    }
+
+    this.state.touchDrag = {
+      wordId: word.id,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+      ghost: null,
+      sourceElement: wordButton,
+      targetElement: null,
+      targetType: null,
+      targetBlankId: null
+    };
+
+    if (typeof wordButton.setPointerCapture === "function") {
+      wordButton.setPointerCapture(event.pointerId);
+    }
+  }
+
+  handleTouchDragMove(event, word, wordButton) {
+    const touchDrag = this.state.touchDrag;
+    if (!touchDrag || event.pointerId !== touchDrag.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - touchDrag.startX;
+    const deltaY = event.clientY - touchDrag.startY;
+    if (!touchDrag.active && Math.hypot(deltaX, deltaY) < TOUCH_DRAG_START_DISTANCE) {
+      return;
+    }
+
+    if (!touchDrag.active) {
+      this.clearSubmittedFeedback();
+      touchDrag.active = true;
+      this.state.selectedWordId = word.id;
+      touchDrag.ghost = createTouchDragGhost(wordButton, event.clientX, event.clientY);
+      wordButton.classList.add("is-touch-origin");
+      this.syncUi();
+    }
+
+    event.preventDefault();
+    this.updateTouchDragGhost(event.clientX, event.clientY);
+    this.updateTouchDragTarget(event.clientX, event.clientY);
+  }
+
+  handleNativeDragStart(event, word, wordButton) {
+    if (this.state.finalized || wordButton.classList.contains("is-locked")) {
+      event.preventDefault();
+      return;
+    }
+
+    if (!event.dataTransfer) {
+      return;
+    }
+
+    this.state.selectedWordId = word.id;
+    event.dataTransfer.setData("text/plain", word.id);
+    event.dataTransfer.effectAllowed = "move";
+    window.setTimeout(() => this.syncUi(), 0);
+  }
+
+  createWordChip(word) {
     const wordButton = createElement("button", "fib-word", word.text);
     wordButton.type = "button";
     wordButton.draggable = true;
     wordButton.setAttribute("data-word-id", word.id);
     wordButton.setAttribute("aria-pressed", "false");
-    wordButton.addEventListener("click", function (event) {
-      event.stopPropagation();
-      if (Date.now() - state.lastTouchDragAt < TOUCH_DRAG_CLICK_SUPPRESSION_MS) {
-        event.preventDefault();
-        return;
-      }
 
-      if (state.finalized || wordButton.classList.contains("is-locked")) {
-        return;
-      }
+    wordButton.addEventListener("click", (event) => this.handleWordClick(event, word, wordButton));
+    wordButton.addEventListener("pointerdown", (event) => this.startTouchDrag(event, word, wordButton));
+    wordButton.addEventListener("pointermove", (event) => this.handleTouchDragMove(event, word, wordButton));
+    wordButton.addEventListener("pointerup", (event) => this.finishTouchDrag(event, true));
+    wordButton.addEventListener("pointercancel", (event) => this.finishTouchDrag(event, false));
+    wordButton.addEventListener("dragstart", (event) => this.handleNativeDragStart(event, word, wordButton));
+    wordButton.addEventListener("dragend", () => {
+      this.state.selectedWordId = null;
+      this.syncUi();
+    });
 
-      if (state.selectedWordId === word.id && getFilledBlankIdForWord(word.id)) {
-        clearSubmittedFeedback();
-        moveWordToBank(word.id);
-        state.selectedWordId = null;
-        updateFillInBlankUi();
-        return;
-      }
-
-      setSelectedWord(word.id);
-    });
-    wordButton.addEventListener("pointerdown", function (event) {
-      if (event.pointerType === "mouse" || state.finalized || wordButton.classList.contains("is-locked")) {
-        return;
-      }
-
-      state.touchDrag = {
-        wordId: word.id,
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        active: false,
-        ghost: null,
-        sourceElement: wordButton,
-        targetElement: null,
-        targetType: null,
-        targetBlankId: null
-      };
-      if (typeof wordButton.setPointerCapture === "function") {
-        wordButton.setPointerCapture(event.pointerId);
-      }
-    });
-    wordButton.addEventListener("pointermove", function (event) {
-      if (!state.touchDrag || event.pointerId !== state.touchDrag.pointerId) {
-        return;
-      }
-
-      const deltaX = event.clientX - state.touchDrag.startX;
-      const deltaY = event.clientY - state.touchDrag.startY;
-      const distance = Math.hypot(deltaX, deltaY);
-      if (!state.touchDrag.active && distance < TOUCH_DRAG_START_DISTANCE) {
-        return;
-      }
-
-      if (!state.touchDrag.active) {
-        clearSubmittedFeedback();
-        state.touchDrag.active = true;
-        state.selectedWordId = word.id;
-        state.touchDrag.ghost = createTouchDragGhost(wordButton, event.clientX, event.clientY);
-        wordButton.classList.add("is-touch-origin");
-        updateFillInBlankUi();
-      }
-
-      event.preventDefault();
-      updateTouchDragGhost(event.clientX, event.clientY);
-      updateTouchDragTarget(event.clientX, event.clientY);
-    });
-    wordButton.addEventListener("pointerup", function (event) {
-      finishTouchDrag(event, true);
-    });
-    wordButton.addEventListener("pointercancel", function (event) {
-      finishTouchDrag(event, false);
-    });
-    wordButton.addEventListener("dragstart", function (event) {
-      if (state.finalized || wordButton.classList.contains("is-locked")) {
-        event.preventDefault();
-        return;
-      }
-      state.selectedWordId = word.id;
-      event.dataTransfer.setData("text/plain", word.id);
-      event.dataTransfer.effectAllowed = "move";
-      window.setTimeout(updateFillInBlankUi, 0);
-    });
-    wordButton.addEventListener("dragend", function () {
-      state.selectedWordId = null;
-      updateFillInBlankUi();
-    });
-    wordElementsById.set(word.id, wordButton);
+    this.wordElementsById.set(word.id, wordButton);
     return wordButton;
   }
 
-  function createBlank(blank, blankIndex) {
+  createBlank(blank, blankIndex) {
     const blankButton = createElement("span", "fib-blank is-empty");
     blankButton.setAttribute("role", "button");
     blankButton.setAttribute("tabindex", "0");
     blankButton.setAttribute("data-blank-id", blank.id);
-    blankButton.setAttribute("aria-label", `Blank ${blankIndex + 1}${blank.hint ? `, hint: ${blank.hint}` : ""}`);
+    blankButton.setAttribute("aria-label", getBlankAriaLabel(blank, blankIndex, null));
+
     if (blank.hint) {
       blankButton.setAttribute("data-hint", blank.hint);
     }
-    blankButton.addEventListener("click", function () {
-      handleBlankAction(blank.id);
-    });
-    blankButton.addEventListener("keydown", function (event) {
+
+    blankButton.addEventListener("click", () => this.handleBlankAction(blank.id));
+    blankButton.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") {
         return;
       }
 
       event.preventDefault();
-      handleBlankAction(blank.id);
+      this.handleBlankAction(blank.id);
     });
-    blankButton.addEventListener("dragover", function (event) {
-      if (state.finalized || state.lockedBlankIds.has(blank.id)) {
+    blankButton.addEventListener("dragover", (event) => {
+      if (this.state.finalized || this.state.lockedBlankIds.has(blank.id)) {
         return;
       }
       event.preventDefault();
       blankButton.classList.add("is-dragover");
       event.dataTransfer.dropEffect = "move";
     });
-    blankButton.addEventListener("dragleave", function () {
+    blankButton.addEventListener("dragleave", () => {
       blankButton.classList.remove("is-dragover");
     });
-    blankButton.addEventListener("drop", function (event) {
+    blankButton.addEventListener("drop", (event) => {
       event.preventDefault();
       blankButton.classList.remove("is-dragover");
       const wordId = event.dataTransfer.getData("text/plain");
       if (wordId) {
-        placeWordInBlank(wordId, blank.id);
+        this.placeWordInBlank(wordId, blank.id);
       }
     });
+
     blankButton.appendChild(createElement("span", "fib-blank-label", String(blankIndex + 1)));
-    blankElementsById.set(blank.id, blankButton);
+    this.blankElementsById.set(blank.id, blankButton);
     return blankButton;
   }
 
-  function renderParagraph() {
-    paragraph.innerHTML = "";
-    const activeBlankIds = new Set(currentQuestion.activeBlankIds);
-    const blankIndexById = new Map(currentQuestion.activeBlanks.map((blank, index) => [blank.id, index]));
-    const placeholderPattern = /\{\{([^}]+)\}\}/g;
+  renderParagraph() {
+    this.dom.paragraph.replaceChildren();
+
+    const activeBlankIds = new Set(this.question.activeBlankIds);
+    const blankIndexById = new Map(this.question.activeBlanks.map((blank, index) => [blank.id, index]));
+    const placeholderPattern = new RegExp(PLACEHOLDER_PATTERN);
     let lastIndex = 0;
-    let match = placeholderPattern.exec(currentQuestion.paragraph);
+    let match = placeholderPattern.exec(this.question.paragraph);
 
     while (match) {
       if (match.index > lastIndex) {
-        paragraph.appendChild(document.createTextNode(currentQuestion.paragraph.slice(lastIndex, match.index)));
+        this.dom.paragraph.appendChild(document.createTextNode(this.question.paragraph.slice(lastIndex, match.index)));
       }
 
       const blankId = match[1].trim();
-      const blank = getFillInBlankById(currentQuestion, blankId);
+      const blank = getFillInBlankById(this.question, blankId);
       if (blank && activeBlankIds.has(blankId)) {
-        paragraph.appendChild(createBlank(blank, blankIndexById.get(blankId)));
+        this.dom.paragraph.appendChild(this.createBlank(blank, blankIndexById.get(blankId) ?? 0));
       } else {
-        const fallbackBlank = currentQuestion.blanks.find((candidate) => candidate.id === blankId);
-        paragraph.appendChild(document.createTextNode(fallbackBlank ? fallbackBlank.answer : match[0]));
+        const fallbackBlank = this.question.blanks.find((candidate) => candidate.id === blankId);
+        this.dom.paragraph.appendChild(document.createTextNode(fallbackBlank ? fallbackBlank.answer : match[0]));
       }
 
       lastIndex = match.index + match[0].length;
-      match = placeholderPattern.exec(currentQuestion.paragraph);
+      match = placeholderPattern.exec(this.question.paragraph);
     }
 
-    if (lastIndex < currentQuestion.paragraph.length) {
-      paragraph.appendChild(document.createTextNode(currentQuestion.paragraph.slice(lastIndex)));
+    if (lastIndex < this.question.paragraph.length) {
+      this.dom.paragraph.appendChild(document.createTextNode(this.question.paragraph.slice(lastIndex)));
     }
   }
 
-  bank.addEventListener("dragover", function (event) {
-    event.preventDefault();
-    bank.classList.add("is-dragover");
-    event.dataTransfer.dropEffect = "move";
-  });
-  bank.addEventListener("dragleave", function () {
-    bank.classList.remove("is-dragover");
-  });
-  bank.addEventListener("drop", function (event) {
-    event.preventDefault();
-    bank.classList.remove("is-dragover");
-    const wordId = event.dataTransfer.getData("text/plain");
-    if (wordId) {
-      clearSubmittedFeedback();
-      moveWordToBank(wordId);
-      state.selectedWordId = null;
-      updateFillInBlankUi();
-    }
-  });
+  bindBankDropTarget() {
+    this.dom.bank.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      this.dom.bank.classList.add("is-dragover");
+      event.dataTransfer.dropEffect = "move";
+    });
+    this.dom.bank.addEventListener("dragleave", () => {
+      this.dom.bank.classList.remove("is-dragover");
+    });
+    this.dom.bank.addEventListener("drop", (event) => {
+      event.preventDefault();
+      this.dom.bank.classList.remove("is-dragover");
+      const wordId = event.dataTransfer.getData("text/plain");
+      if (!wordId) {
+        return;
+      }
 
-  renderParagraph();
-  configureHintButton(wrapper, hasFillInBlankHints(currentQuestion));
-  currentQuestion.wordBank.forEach((word) => {
-    bankGrid.appendChild(createWordChip(word));
-  });
-  quizState.submitCurrentAnswer = submitFillInBlankAnswer;
-  updateFillInBlankUi();
+      this.clearSubmittedFeedback();
+      this.moveWordToBank(wordId);
+      this.state.selectedWordId = null;
+      this.syncUi();
+    });
+  }
 }

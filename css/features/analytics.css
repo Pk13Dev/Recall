@@ -34,6 +34,14 @@
 .analytics-hero-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.analytics-hero-actions .helper-text {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
 }
 
 .analytics-empty-card {

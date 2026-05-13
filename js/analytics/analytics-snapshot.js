@@ -1,8 +1,13 @@
 import { createDefaultAnalyticsModel, createDefaultBehaviorStats, createDefaultFibStats, decorateFibStats, decorateQuestionStat, decorateQuizStat, getConsistencyFromStdDev, getRegressionSlope, getStdDevFromMoments, getVarianceFromMoments } from "./analytics-model.js";
 import { ANALYTICS_ROLLING_WINDOW } from "../core/constants.js";
 import { libraryRuntime } from "../core/state.js";
-import { safeDivide } from "../core/utils.js";
-import { getGoalPercent } from "../ui/settings.js";
+import { normalizeGoalPercent, safeDivide } from "../core/utils.js";
+
+export function getAnalyticsGoalPercent() {
+  return normalizeGoalPercent(libraryRuntime.model && libraryRuntime.model.settings
+    ? libraryRuntime.model.settings.goalPercent
+    : undefined);
+}
 
 export function buildRollingAverageSeries(sessions, windowSize) {
   const sortedSessions = sessions
@@ -163,7 +168,7 @@ export function getAnalyticsSnapshot() {
     .slice(0, 3);
   const mostIncorrectQuestions = questionStats.filter((stat) => (Number(stat.wrongCount) || 0) > 0).slice(0, 4);
   const attemptedQuizCount = attemptedLibraryQuizStats.length;
-  const goalPercent = getGoalPercent();
+  const goalPercent = getAnalyticsGoalPercent();
   const passedQuizCount = attemptedLibraryQuizStats.filter((stat) => (Number(stat.bestScorePercent) || 0) >= goalPercent).length;
   const needsWorkQuizCount = attemptedQuizCount - passedQuizCount;
   const rollingSeries = buildRollingAverageSeries(recentSessions, ANALYTICS_ROLLING_WINDOW);
